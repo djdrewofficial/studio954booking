@@ -1,6 +1,21 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -56,7 +71,7 @@ export async function getBookingsInRange(start: Date, end: Date) {
     .select(listColumns)
     .from(bookings)
     .leftJoin(studioSets, eq(studioSets.id, bookings.studioSetId))
-    .where(and(lt(bookings.blockedStart, end), gte(bookings.blockedEnd, start)))
+    .where(and(lt(bookings.blockedStart, end), gt(bookings.blockedEnd, start)))
     .orderBy(asc(bookings.startsAt));
 }
 
@@ -262,12 +277,12 @@ export async function findConflicts(
   if (windows.length === 0) return [];
 
   const overlaps = windows.map((w) =>
-    and(lt(bookings.blockedStart, w.end), sql`${bookings.blockedEnd} > ${w.start}`),
+    and(lt(bookings.blockedStart, w.end), gt(bookings.blockedEnd, w.start)),
   );
 
   const filters = [ne(bookings.status, "cancelled"), or(...overlaps)!];
   if (excludeBookingIds.length) {
-    filters.push(sql`${bookings.id} <> all(${excludeBookingIds}::uuid[])`);
+    filters.push(notInArray(bookings.id, excludeBookingIds));
   }
 
   return db
