@@ -251,10 +251,6 @@ function SessionBlock({
           isLive ? "border-accent" : "border-line",
         )}
       >
-        {isLive ? (
-          <span className="absolute left-0 w-[3px] bg-accent" style={{ height: "1px" }} aria-hidden />
-        ) : null}
-
         <div>
           <div
             className={cx(

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { setupOneLine } from "@/components/setup-recipe";
@@ -163,6 +164,7 @@ function DayColumn({
   dense: boolean;
 }) {
   const columnRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const isToday = now ? dayKey(day, timezone) === dayKey(now, timezone) : false;
   const totalMinutes = hours.length * 60;
 
@@ -188,7 +190,7 @@ function DayColumn({
       onClick={(event) => {
         // Only bare grid clicks create; clicks on a session bubble out first.
         if (event.target !== event.currentTarget) return;
-        window.location.href = newBookingHref(event);
+        router.push(newBookingHref(event));
       }}
       role="presentation"
     >
