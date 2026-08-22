@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ImageUpload } from "@/components/image-upload";
 import { FormError, SettingsForm } from "@/components/settings/form";
 import { ArchiveToggle } from "@/components/settings/toggles";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
@@ -88,9 +89,7 @@ function SetFields({ set }: { set?: StudioSet }) {
         <Field label="Name" errorSlot={<FormError name="name" />}>
           <Input name="name" defaultValue={set?.name ?? ""} placeholder="Podcast Lounge" required />
         </Field>
-        <Field label="Image URL" hint="Shown when choosing a set." errorSlot={<FormError name="imageUrl" />}>
-          <Input name="imageUrl" defaultValue={set?.imageUrl ?? ""} />
-        </Field>
+        <ImageUpload name="imageUrl" defaultValue={set?.imageUrl} label="Set photo" />
         <Field label="Description" className="sm:col-span-2" errorSlot={<FormError name="description" />}>
           <Textarea
             name="description"

@@ -190,6 +190,8 @@ export const bookings = pgTable(
     notes: text("notes"),
     internalNotes: text("internal_notes"),
     microphoneCount: integer("microphone_count").notNull().default(0),
+    /** Unlocks the script upload, so the copy is loaded before anyone arrives. */
+    usesTeleprompter: boolean("uses_teleprompter").notNull().default(false),
 
     /** Shared by every occurrence generated from one recurrence rule. */
     recurrenceGroupId: uuid("recurrence_group_id"),
@@ -247,6 +249,29 @@ export const bookingSetOptions = pgTable(
       .references(() => setOptions.id, { onDelete: "restrict" }),
   },
   (t) => [primaryKey({ columns: [t.bookingId, t.setOptionId] })],
+);
+
+/**
+ * Files a client sends ahead of a session. Currently teleprompter scripts,
+ * stored in a private bucket and reached only through short-lived signed URLs.
+ */
+export const bookingFiles = pgTable(
+  "booking_files",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    /** teleprompter_script | reference */
+    kind: text("kind").notNull().default("teleprompter_script"),
+    fileName: text("file_name").notNull(),
+    storagePath: text("storage_path").notNull(),
+    contentType: text("content_type"),
+    sizeBytes: integer("size_bytes"),
+    uploadedById: uuid("uploaded_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("booking_files_booking_id_idx").on(t.bookingId)],
 );
 
 export const bookingAddons = pgTable(

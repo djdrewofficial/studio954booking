@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ImageUpload } from "@/components/image-upload";
 import { FormError, SettingsForm } from "@/components/settings/form";
 import { ArchiveToggle } from "@/components/settings/toggles";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
@@ -165,9 +166,7 @@ function OptionFields({
         <Field label="Swatch colour" hint="Optional hex, e.g. #D8C7A8." errorSlot={<FormError name="swatchHex" />}>
           <Input name="swatchHex" defaultValue={option?.swatchHex ?? ""} placeholder="#D8C7A8" />
         </Field>
-        <Field label="Image URL" errorSlot={<FormError name="imageUrl" />}>
-          <Input name="imageUrl" defaultValue={option?.imageUrl ?? ""} />
-        </Field>
+        <ImageUpload name="imageUrl" defaultValue={option?.imageUrl} label="Option photo" />
         <Field label="Description" errorSlot={<FormError name="description" />}>
           <Textarea name="description" rows={2} defaultValue={option?.description ?? ""} />
         </Field>
