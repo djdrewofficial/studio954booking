@@ -19,13 +19,16 @@ export function StatusAction({
   bookingId,
   status,
   showOverride = false,
-  size = "sm",
+  size = "md",
+  onDark = false,
   className,
 }: {
   bookingId: string;
   status: BookingStatus;
   showOverride?: boolean;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  /** Sitting on a dark card, where the magenta fill would disappear. */
+  onDark?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -52,11 +55,13 @@ export function StatusAction({
   }
 
   if (current === "cancelled") {
-    return <span className="eyebrow text-muted">Cancelled</span>;
+    return (
+      <span className={cx("font-semibold", onDark ? "text-white/70" : "text-muted")}>Cancelled</span>
+    );
   }
 
   return (
-    <div className={cx("flex items-center gap-2", className)}>
+    <div className={cx("flex flex-wrap items-center gap-3", className)}>
       {showOverride ? (
         <Select
           aria-label="Change status"
@@ -66,7 +71,7 @@ export function StatusAction({
             const target = e.target.value as BookingStatus;
             apply(target, `Status set to ${BOOKING_STATUS_LABEL[target]}`);
           }}
-          className="h-8 w-auto text-[0.8125rem]"
+          className="h-11 w-auto"
         >
           {BOOKING_STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -78,15 +83,18 @@ export function StatusAction({
 
       {next ? (
         <Button
-          variant="primary"
+          variant={onDark ? "secondary" : "primary"}
           size={size}
           disabled={pending}
-          onClick={() => apply(next.next, `${next.label} · done`)}
+          onClick={() => apply(next.next, `${next.label} — done`)}
+          className={onDark ? "border-transparent bg-white text-ink hover:bg-white/90" : undefined}
         >
           {pending ? "Saving…" : next.label}
         </Button>
       ) : current === "complete" ? (
-        <span className="eyebrow text-muted">Complete</span>
+        <span className={cx("font-semibold", onDark ? "text-white/70" : "text-muted")}>
+          All done
+        </span>
       ) : null}
     </div>
   );

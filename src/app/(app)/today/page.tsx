@@ -46,7 +46,11 @@ export default async function TodayPage() {
     setup: (setups.get(row.id) ?? []).map((line) => ({
       categoryName: line.categoryName,
       categorySlug: line.categorySlug,
-      options: line.options.map((o) => ({ name: o.name, swatchHex: o.swatchHex })),
+      options: line.options.map((o) => ({
+        name: o.name,
+        swatchHex: o.swatchHex,
+        imageUrl: o.imageUrl,
+      })),
     })),
   }));
 

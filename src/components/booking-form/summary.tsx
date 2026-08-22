@@ -69,7 +69,7 @@ export function BookingSummary({
       categorySlug: category.slug,
       options: category.options
         .filter((o) => values.setOptionIds.includes(o.id))
-        .map((o) => ({ name: o.name, swatchHex: o.swatchHex })),
+        .map((o) => ({ name: o.name, swatchHex: o.swatchHex, imageUrl: o.imageUrl })),
     }))
     .filter((line) => line.options.length > 0);
 
@@ -148,7 +148,7 @@ export function BookingSummary({
         <>
           <p className="display mt-3 text-xl">{set.name}</p>
           {recipe.length ? (
-            <SetupRecipe setup={recipe} layout="block" className="mt-4" />
+            <SetupRecipe setup={recipe} className="mt-4" />
           ) : (
             <p className="mt-3 text-sm text-muted">No options chosen yet.</p>
           )}

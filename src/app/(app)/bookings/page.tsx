@@ -9,7 +9,7 @@ import {
   BOOKING_KIND_LABEL,
   BOOKING_STATUS_LABEL,
   BOOKING_TYPE_LABEL,
-  isLiveStatus,
+  STATUS_TONE,
   type BookingKind,
   type BookingStatus,
   type BookingType,
@@ -96,9 +96,10 @@ export default async function BookingsPage({
                       categoryName: line.categoryName,
                       categorySlug: line.categorySlug,
                       options: line.options.map((o) => ({
-                        name: o.name,
-                        swatchHex: o.swatchHex,
-                      })),
+                  name: o.name,
+                  swatchHex: o.swatchHex,
+                  imageUrl: o.imageUrl,
+                })),
                     })),
                   );
 
@@ -136,8 +137,7 @@ export default async function BookingsPage({
                         <span className="flex items-start sm:justify-end">
                           <StatusChip
                             label={BOOKING_STATUS_LABEL[status]}
-                            live={isLiveStatus(status)}
-                            muted={status === "upcoming" || status === "cancelled"}
+                            tone={STATUS_TONE[status]}
                           />
                         </span>
                       </Link>

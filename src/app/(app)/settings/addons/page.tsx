@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { ArchiveToggle } from "@/components/settings/toggles";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -31,7 +31,7 @@ export default async function AddonsSettingsPage() {
           <div className="pb-6">
             <fieldset disabled={readOnly}>
               <SettingsForm action={saveAddon} submitLabel="Create add-on">
-                {(errors) => <AddonFields errors={errors} />}
+                <AddonFields />
               </SettingsForm>
             </fieldset>
           </div>
@@ -58,7 +58,7 @@ export default async function AddonsSettingsPage() {
               <div className="pb-6">
                 <fieldset disabled={readOnly}>
                   <SettingsForm action={saveAddon}>
-                    {(errors) => <AddonFields errors={errors} addon={addon} />}
+                    <AddonFields addon={addon} />
                   </SettingsForm>
                 </fieldset>
                 {!readOnly ? (
@@ -79,15 +79,15 @@ export default async function AddonsSettingsPage() {
   );
 }
 
-function AddonFields({ errors, addon }: { errors: Record<string, string>; addon?: Addon }) {
+function AddonFields({ addon }: { addon?: Addon }) {
   return (
     <>
       {addon ? <input type="hidden" name="id" value={addon.id} /> : null}
       <div className="grid gap-6 sm:grid-cols-[1fr_160px]">
-        <Field label="Name" error={errors.name}>
+        <Field label="Name" errorSlot={<FormError name="name" />}>
           <Input name="name" defaultValue={addon?.name ?? ""} required />
         </Field>
-        <Field label="Price (USD)" error={errors.priceCents}>
+        <Field label="Price (USD)" errorSlot={<FormError name="priceCents" />}>
           <Input
             name="price"
             type="number"
@@ -96,7 +96,7 @@ function AddonFields({ errors, addon }: { errors: Record<string, string>; addon?
             defaultValue={addon ? (addon.priceCents / 100).toFixed(2) : "0.00"}
           />
         </Field>
-        <Field label="Description" className="sm:col-span-2" error={errors.description}>
+        <Field label="Description" className="sm:col-span-2" errorSlot={<FormError name="description" />}>
           <Textarea name="description" rows={2} defaultValue={addon?.description ?? ""} />
         </Field>
       </div>

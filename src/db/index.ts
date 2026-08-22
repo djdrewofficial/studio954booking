@@ -27,8 +27,15 @@ function connect() {
     );
   }
   return postgres(url, {
-    max: process.env.NODE_ENV === "production" ? 10 : 3,
+    max: process.env.NODE_ENV === "production" ? 10 : 6,
     prepare: false, // required when using Supabase's transaction pooler
+    // The pooler drops connections it considers idle. Recycling ours first
+    // avoids handing a dead socket to a request, which presents as a hang
+    // rather than an error.
+    idle_timeout: 20,
+    max_lifetime: 60 * 30,
+    // Fail loudly instead of stalling a page render indefinitely.
+    connect_timeout: 15,
   });
 }
 

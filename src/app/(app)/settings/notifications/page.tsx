@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { Checkbox, Field, Input } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { canManageSettings } from "@/lib/domain";
@@ -39,8 +39,7 @@ export default async function NotificationSettingsPage() {
       <div className="mt-8">
         <fieldset disabled={readOnly}>
           <SettingsForm action={saveNotificationSettings}>
-            {(errors) => (
-              <>
+                          <>
                 <div className="flex flex-col gap-1 border-y border-line py-4">
                   <Checkbox
                     name="notifyConfirmation"
@@ -66,7 +65,7 @@ export default async function NotificationSettingsPage() {
                   label="Same-day reminder lead"
                   htmlFor="sameDayReminderLeadMinutes"
                   hint="Minutes before the session starts."
-                  error={errors.sameDayReminderLeadMinutes}
+                  errorSlot={<FormError name="sameDayReminderLeadMinutes" />}
                   className="max-w-48"
                 >
                   <Input
@@ -90,7 +89,7 @@ export default async function NotificationSettingsPage() {
                   <Field
                     label="Team address"
                     htmlFor="internalNotificationEmail"
-                    error={errors.internalNotificationEmail}
+                    errorSlot={<FormError name="internalNotificationEmail" />}
                     className="mt-4 max-w-sm"
                   >
                     <Input
@@ -102,7 +101,6 @@ export default async function NotificationSettingsPage() {
                   </Field>
                 </div>
               </>
-            )}
           </SettingsForm>
         </fieldset>
       </div>

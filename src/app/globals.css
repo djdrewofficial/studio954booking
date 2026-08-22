@@ -3,52 +3,61 @@
 /* ===========================================================================
    STUDIO 954 — design tokens
    ---------------------------------------------------------------------------
-   The interface is modelled on a broadcast rundown / production call sheet:
-   information sits in ruled rows rather than cards, hierarchy comes from type
-   scale and hairlines, and the magenta accent is rationed to exactly four
-   jobs — the live indicator, primary actions, focus rings, and the active nav
-   underline. Nothing else gets to be pink.
+   Warm, friendly and photo-led. The people running this studio are not
+   technical, so the interface favours generous type, soft rounded panels, big
+   touch targets and plain language over dense typographic hierarchy.
+
+   Colour is used to *inform*, not to decorate: magenta means live, green means
+   ready, amber means the room is being worked on. Nothing else gets a colour.
    ======================================================================== */
 
 @theme {
   /* -- Surfaces ---------------------------------------------------------- */
-  --color-ink: #0a0a0b; /* near-black: masthead, display type */
-  --color-ink-raised: #16161a; /* raised surfaces on dark */
-  --color-ink-line: #2a2a30; /* hairline on dark */
-  --color-ink-muted: #8b8880; /* secondary type on dark */
+  --color-ink: #17161a; /* headings, dark panels */
+  --color-ink-raised: #23222a;
+  --color-ink-line: #35333e;
+  --color-ink-muted: #9d99a6;
 
-  --color-paper: #faf9f6; /* warm off-white workspace */
-  --color-paper-raised: #ffffff; /* inset panels, used sparingly */
-  --color-paper-sunk: #f2f0ea; /* buffer blocks, table headers */
-  --color-line: #e3e0d9; /* hairline on paper */
-  --color-line-strong: #cfcbc1; /* emphasised rule */
-  --color-muted: #6e6b64; /* secondary type on paper */
+  --color-paper: #fbf8f4; /* warm workspace background */
+  --color-surface: #ffffff; /* panels sit on the workspace */
+  --color-sand: #f4efe7; /* buffers, quiet fills, table headers */
+  --color-line: #e9e3da; /* soft hairline */
+  --color-line-strong: #d6cec1;
+  --color-muted: #736d64; /* secondary text */
 
   /* -- Accent ------------------------------------------------------------
-     `accent` is the brand magenta, used as a fill or on dark grounds.
-     `accent-ink` is a darkened sibling for accent-coloured *text* on paper,
-     where the raw brand colour only reaches 3.6:1 against off-white.
-     Magenta fills always carry near-black type, never white — it reads more
-     confidently and clears AA at 5.2:1. */
+     `accent` is the brand magenta. `accent-ink` is a darkened sibling for
+     accent-coloured *text*, where the raw brand colour only reaches 3.6:1
+     against the warm paper. Magenta fills always carry near-black type. */
   --color-accent: #f92998;
-  --color-accent-ink: #db0f80;
-  --color-accent-wash: #fdeaf4;
+  --color-accent-ink: #c9106f;
+  --color-accent-soft: #fde9f3;
 
-  /* The one other colour in the product. Reserved for destructive intent,
-     where a second meaning genuinely exists and grey would be dishonest. */
-  --color-danger: #a61b1b;
+  /* -- Status ------------------------------------------------------------
+     Three meanings, three colours. Ready is green, the room being worked on
+     is amber, live is the brand magenta. */
+  --color-ready: #0f7a52;
+  --color-ready-soft: #e4f5ec;
+  --color-prep: #a86a00;
+  --color-prep-soft: #fdf0dc;
+  --color-danger: #c0342b;
+  --color-danger-soft: #fdeceb;
 
   /* -- Type -------------------------------------------------------------- */
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
 
   /* -- Geometry ----------------------------------------------------------
-     Deliberately shallow. Nothing in this product is a rounded card. */
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
+     Soft and rounded. Panels are pill-adjacent without being childish. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
 
-  /* -- Motion ------------------------------------------------------------ */
+  /* -- Elevation --------------------------------------------------------- */
+  --shadow-soft: 0 1px 2px rgba(23, 22, 26, 0.04), 0 6px 20px rgba(23, 22, 26, 0.06);
+  --shadow-lift: 0 2px 4px rgba(23, 22, 26, 0.05), 0 12px 32px rgba(23, 22, 26, 0.1);
+
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -68,69 +77,82 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv05";
+  font-size: 17px; /* larger baseline: this is read across a room */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: var(--color-accent);
-  color: var(--color-ink);
+  color: white;
 }
 
-/* A single, consistent focus treatment across the whole product. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-sm);
 }
 
 /* ===========================================================================
-   Typographic utilities
-   ---------------------------------------------------------------------------
-   The eyebrow is the signature of this interface: wide-tracked caps, small,
-   used to label every region instead of wrapping it in a card.
+   Utilities
    ======================================================================== */
 
-@utility eyebrow {
-  font-size: 0.6875rem;
-  line-height: 1;
+/** A soft white panel. The workhorse container of the whole product. */
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+/** Small friendly label above a value. Sentence case, never shouting. */
+@utility label {
+  font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  letter-spacing: 0;
+}
+
+/**
+ * Retained for compatibility with earlier markup, but deliberately no longer
+ * uppercase or wide-tracked — the app should not shout at anyone.
+ */
+@utility eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: inherit;
 }
 
 @utility eyebrow-lg {
-  font-size: 0.8125rem;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-/** Timecodes, durations, counts — always mono, always tabular. */
+/** Times and counts: same family, tabular figures so columns line up. */
 @utility timecode {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-/** Large display type: tightened, because it is set at scale. */
 @utility display {
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 /* ===========================================================================
-   Motion — subtle, functional, and fully disabled on request
+   Motion
    ======================================================================== */
 
 @keyframes s954-rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -142,9 +164,11 @@ body {
   0%,
   100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.45;
+    transform: scale(0.88);
   }
 }
 
@@ -158,21 +182,19 @@ body {
 }
 
 @utility rise {
-  animation: s954-rise 0.32s var(--ease-out-quint) both;
+  animation: s954-rise 0.34s var(--ease-out-quint) both;
 }
 
-/** The tally light next to a session that is happening right now. */
 @utility tally {
   animation: s954-pulse 2s ease-in-out infinite;
 }
 
-/** Skeleton shimmer for loading states. */
 @utility shimmer {
   background-image: linear-gradient(
     90deg,
-    var(--color-paper-sunk) 0%,
+    var(--color-sand) 0%,
     var(--color-line) 40%,
-    var(--color-paper-sunk) 80%
+    var(--color-sand) 80%
   );
   background-size: 200% 100%;
   animation: s954-sweep 1.4s linear infinite;
@@ -189,7 +211,7 @@ body {
 }
 
 /* ===========================================================================
-   Print — the prep sheet is a real deliverable, not a screenshot
+   Print — the prep sheet is a real deliverable
    ======================================================================== */
 
 @media print {
@@ -202,17 +224,13 @@ body {
   body {
     background: #fff !important;
     color: #000 !important;
+    font-size: 12pt;
   }
 
   [data-print="hide"] {
     display: none !important;
   }
 
-  [data-print="block"] {
-    display: block !important;
-  }
-
-  /* Keep a session and its setup details on one page. */
   [data-print="keep"] {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -220,6 +238,12 @@ body {
 
   [data-print="break"] {
     break-before: page;
+  }
+
+  /* Panels flatten to plain ruled blocks on paper. */
+  .card {
+    box-shadow: none !important;
+    border-color: #999 !important;
   }
 
   a[href]::after {

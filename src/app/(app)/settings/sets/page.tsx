@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { ArchiveToggle } from "@/components/settings/toggles";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -31,7 +31,7 @@ export default async function SetsSettingsPage() {
           <div className="pb-6">
             <fieldset disabled={readOnly}>
               <SettingsForm action={saveStudioSet} submitLabel="Create set">
-                {(errors) => <SetFields errors={errors} />}
+                <SetFields />
               </SettingsForm>
             </fieldset>
           </div>
@@ -57,7 +57,7 @@ export default async function SetsSettingsPage() {
               <div className="pb-6">
                 <fieldset disabled={readOnly}>
                   <SettingsForm action={saveStudioSet}>
-                    {(errors) => <SetFields errors={errors} set={set} />}
+                    <SetFields set={set} />
                   </SettingsForm>
                 </fieldset>
                 {!readOnly ? (
@@ -80,18 +80,18 @@ export default async function SetsSettingsPage() {
   );
 }
 
-function SetFields({ errors, set }: { errors: Record<string, string>; set?: StudioSet }) {
+function SetFields({ set }: { set?: StudioSet }) {
   return (
     <>
       {set ? <input type="hidden" name="id" value={set.id} /> : null}
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Name" error={errors.name}>
+        <Field label="Name" errorSlot={<FormError name="name" />}>
           <Input name="name" defaultValue={set?.name ?? ""} placeholder="Podcast Lounge" required />
         </Field>
-        <Field label="Image URL" hint="Shown when choosing a set." error={errors.imageUrl}>
+        <Field label="Image URL" hint="Shown when choosing a set." errorSlot={<FormError name="imageUrl" />}>
           <Input name="imageUrl" defaultValue={set?.imageUrl ?? ""} />
         </Field>
-        <Field label="Description" className="sm:col-span-2" error={errors.description}>
+        <Field label="Description" className="sm:col-span-2" errorSlot={<FormError name="description" />}>
           <Textarea
             name="description"
             rows={2}

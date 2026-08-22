@@ -1,26 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, JetBrains_Mono } from "next/font/google";
+import { Figtree } from "next/font/google";
 
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
 /**
- * Two families, used with discipline. Archivo carries every piece of prose and
- * every heading; JetBrains Mono is reserved for time — clock readings,
- * durations and counts — so a glance at the left gutter always reads as data.
+ * One family, doing everything. Figtree is warm and slightly rounded, which
+ * suits a tool used by people who do not think of themselves as software
+ * users. Times use its tabular figures rather than a separate monospace,
+ * which read as technical.
  */
-const archivo = Archivo({
+const figtree = Figtree({
   subsets: ["latin"],
-  variable: "--font-archivo",
+  variable: "--font-figtree",
   display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-  display: "swap",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -40,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={figtree.variable}>
       <body className="min-h-dvh antialiased">
         <ToastProvider>{children}</ToastProvider>
       </body>

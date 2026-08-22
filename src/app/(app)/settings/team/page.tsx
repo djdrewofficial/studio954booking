@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { UserActiveToggle } from "@/components/settings/toggles";
 import { Field, Input, Select } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -31,7 +31,7 @@ export default async function TeamSettingsPage() {
           <div className="pb-6">
             <fieldset disabled={readOnly}>
               <SettingsForm action={saveUser} submitLabel="Create account">
-                {(errors) => <UserFields errors={errors} isNew />}
+                <UserFields isNew />
               </SettingsForm>
             </fieldset>
           </div>
@@ -56,12 +56,10 @@ export default async function TeamSettingsPage() {
               <div className="pb-6">
                 <fieldset disabled={readOnly}>
                   <SettingsForm action={saveUser}>
-                    {(errors) => (
-                      <>
+                                          <>
                         <input type="hidden" name="id" value={person.id} />
-                        <UserFields errors={errors} user={person} />
+                        <UserFields user={person} />
                       </>
-                    )}
                   </SettingsForm>
                 </fieldset>
                 {!readOnly ? (
@@ -83,23 +81,21 @@ export default async function TeamSettingsPage() {
 }
 
 function UserFields({
-  errors,
   user,
   isNew,
 }: {
-  errors: Record<string, string>;
   user?: { name: string; email: string; role: string };
   isNew?: boolean;
 }) {
   return (
     <div className="grid gap-6 sm:grid-cols-2">
-      <Field label="Name" error={errors.name}>
+      <Field label="Name" errorSlot={<FormError name="name" />}>
         <Input name="name" defaultValue={user?.name ?? ""} required />
       </Field>
-      <Field label="Email" error={errors.email}>
+      <Field label="Email" errorSlot={<FormError name="email" />}>
         <Input name="email" type="email" defaultValue={user?.email ?? ""} required />
       </Field>
-      <Field label="Role" error={errors.role}>
+      <Field label="Role" errorSlot={<FormError name="role" />}>
         <Select name="role" defaultValue={user?.role ?? "team"}>
           {USER_ROLES.map((role) => (
             <option key={role} value={role}>
@@ -111,7 +107,7 @@ function UserFields({
       <Field
         label={isNew ? "Password" : "New password"}
         hint={isNew ? "At least 10 characters." : "Leave blank to keep the current one."}
-        error={errors.password}
+        errorSlot={<FormError name="password" />}
       >
         <Input name="password" type="password" autoComplete="new-password" minLength={10} />
       </Field>

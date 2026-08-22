@@ -5,10 +5,16 @@ import type { BookingStatus } from "./domain";
  * both always agree about what is happening in the room right now.
  */
 
+export type SetupOption = {
+  name: string;
+  swatchHex: string | null;
+  imageUrl: string | null;
+};
+
 export type SetupGroup = {
   categoryName: string;
   categorySlug: string;
-  options: { name: string; swatchHex: string | null }[];
+  options: SetupOption[];
 };
 
 export type SessionView = {
@@ -71,10 +77,20 @@ export function roomStateAt(sessions: SessionView[], now: Date): RoomState {
   return { phase: "clear" };
 }
 
-/** The next session that has not started yet. */
-export function nextSession(sessions: SessionView[], now: Date): SessionView | null {
+/**
+ * The next session that has not started yet — excluding whichever session the
+ * room is already working on, so "setting up for X" is never followed by
+ * "next: X".
+ */
+export function nextSession(
+  sessions: SessionView[],
+  now: Date,
+  exclude?: SessionView | null,
+): SessionView | null {
   return (
-    sessions.find((s) => s.status !== "cancelled" && s.startsAt > now) ?? null
+    sessions.find(
+      (s) => s.status !== "cancelled" && s.startsAt > now && s.id !== exclude?.id,
+    ) ?? null
   );
 }
 

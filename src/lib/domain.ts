@@ -87,6 +87,24 @@ export function isLiveStatus(status: BookingStatus): boolean {
   return status === "in_session";
 }
 
+/**
+ * Three meanings worth colouring: the room is live, the room is ready, or the
+ * team is working on the room. Everything else stays quiet.
+ */
+export type StatusTone = "live" | "ready" | "prep" | "neutral" | "done" | "off";
+
+export const STATUS_TONE: Record<BookingStatus, StatusTone> = {
+  upcoming: "neutral",
+  setting_up: "prep",
+  ready: "ready",
+  checked_in: "ready",
+  in_session: "live",
+  finished: "prep",
+  resetting: "prep",
+  complete: "done",
+  cancelled: "off",
+};
+
 export function isCancelled(status: BookingStatus): boolean {
   return status === "cancelled";
 }

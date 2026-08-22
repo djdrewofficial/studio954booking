@@ -15,9 +15,10 @@ const NAV = [
 ] as const;
 
 /**
- * The masthead is a horizontal black band, not a sidebar. Four destinations is
- * few enough that they belong in the header, which keeps the whole width of
- * the screen available for the schedule itself.
+ * A horizontal header rather than a sidebar — four destinations is few enough
+ * that they belong across the top, which leaves the whole width of the screen
+ * for the schedule. The active tab is a filled pill, which reads faster than
+ * an underline for people who are not used to software.
  */
 export function Masthead({
   studioName,
@@ -36,28 +37,28 @@ export function Masthead({
 
   return (
     <header data-print="hide" className="sticky top-0 z-40 bg-ink text-white">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex h-[68px] max-w-[1600px] items-center gap-6 px-4 sm:px-6">
         <Link href="/today" className="flex items-center gap-2.5" aria-label={`${studioName} home`}>
           {logoUrl ? (
             <Image
               src={logoUrl}
               alt={studioName}
-              width={120}
-              height={24}
-              className="h-6 w-auto object-contain"
+              width={140}
+              height={28}
+              className="h-7 w-auto object-contain"
               unoptimized
             />
           ) : (
             <>
-              {/* Placeholder mark — drop a logo into Settings and it takes over. */}
-              <span className="block h-[18px] w-[3px] bg-accent" aria-hidden />
-              <span className="eyebrow-lg text-white">{studioName}</span>
+              {/* Placeholder mark — add a logo in Settings and it takes over. */}
+              <span className="block size-3 rounded-full bg-accent" aria-hidden />
+              <span className="text-lg font-extrabold tracking-tight">{studioName}</span>
             </>
           )}
         </Link>
 
         <nav aria-label="Primary" className="ml-auto hidden md:block">
-          <ul className="flex items-stretch">
+          <ul className="flex items-center gap-1">
             {NAV.map((item) => {
               const active = pathname.startsWith(item.href);
               return (
@@ -66,14 +67,11 @@ export function Masthead({
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cx(
-                      "eyebrow relative flex h-14 items-center px-4 transition-colors",
-                      active ? "text-white" : "text-ink-muted hover:text-white",
+                      "block rounded-full px-5 py-2.5 font-semibold transition-colors",
+                      active ? "bg-white text-ink" : "text-ink-muted hover:bg-white/10 hover:text-white",
                     )}
                   >
                     {item.label}
-                    {active ? (
-                      <span className="absolute inset-x-3 bottom-0 h-0.5 bg-accent" aria-hidden />
-                    ) : null}
                   </Link>
                 </li>
               );
@@ -88,8 +86,8 @@ export function Masthead({
       </div>
 
       {/* On narrow screens the nav drops to its own full-width row. */}
-      <nav aria-label="Primary" className="border-t border-ink-line md:hidden">
-        <ul className="grid grid-cols-4">
+      <nav aria-label="Primary" className="border-t border-ink-line px-2 pb-2 md:hidden">
+        <ul className="grid grid-cols-4 gap-1">
           {NAV.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
@@ -98,14 +96,11 @@ export function Masthead({
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cx(
-                    "eyebrow relative flex h-11 items-center justify-center transition-colors",
-                    active ? "text-white" : "text-ink-muted",
+                    "flex h-11 items-center justify-center rounded-full text-[0.9375rem] font-semibold transition-colors",
+                    active ? "bg-white text-ink" : "text-ink-muted",
                   )}
                 >
                   {item.label}
-                  {active ? (
-                    <span className="absolute inset-x-4 bottom-0 h-0.5 bg-accent" aria-hidden />
-                  ) : null}
                 </Link>
               </li>
             );
@@ -116,7 +111,7 @@ export function Masthead({
   );
 }
 
-/** Studio-local wall clock. Renders nothing until mounted to avoid a hydration mismatch. */
+/** Studio-local wall clock. Renders a placeholder until mounted so hydration matches. */
 function StudioClock({ timezone }: { timezone: string }) {
   const [now, setNow] = useState<string | null>(null);
 
@@ -129,16 +124,16 @@ function StudioClock({ timezone }: { timezone: string }) {
           timeZone: timezone,
         }).format(new Date()),
       );
-    tick();
+    const initial = setTimeout(tick, 0);
     const id = setInterval(tick, 15_000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, [timezone]);
 
   return (
-    <span
-      className="timecode hidden text-sm text-ink-muted tabular-nums sm:block"
-      suppressHydrationWarning
-    >
+    <span className="timecode hidden text-ink-muted sm:block" suppressHydrationWarning>
       {now ?? "—"}
     </span>
   );
@@ -172,7 +167,8 @@ function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="eyebrow flex size-8 items-center justify-center rounded-sm border border-ink-line text-white transition-colors hover:border-white/40"
+        aria-label={`Account menu for ${user.name}`}
+        className="flex size-11 items-center justify-center rounded-full bg-white/10 font-bold text-white transition-colors hover:bg-white/20"
       >
         {initials || "—"}
       </button>
@@ -182,18 +178,20 @@ function UserMenu({
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
           <div
             role="menu"
-            className="rise absolute right-0 z-20 mt-2 w-56 rounded-sm border border-ink-line bg-ink-raised p-1 shadow-xl"
+            className="rise absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-ink-line bg-ink-raised p-2 shadow-lift"
           >
-            <div className="border-b border-ink-line px-3 py-2.5">
-              <p className="truncate text-sm font-medium text-white">{user.name}</p>
-              <p className="truncate text-[0.8125rem] text-ink-muted">{user.email}</p>
-              <p className="eyebrow mt-1.5 text-ink-muted">{user.role}</p>
+            <div className="px-3 py-3">
+              <p className="truncate font-semibold text-white">{user.name}</p>
+              <p className="truncate text-[0.9375rem] text-ink-muted">{user.email}</p>
+              <p className="mt-2 inline-block rounded-full bg-white/10 px-3 py-1 text-[0.8125rem] font-semibold capitalize text-white">
+                {user.role}
+              </p>
             </div>
             <form action={signOut}>
               <button
                 type="submit"
                 role="menuitem"
-                className="w-full rounded-[2px] px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10"
+                className="w-full rounded-xl px-3 py-3 text-left font-semibold text-white transition-colors hover:bg-white/10"
               >
                 Sign out
               </button>

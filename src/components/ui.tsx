@@ -16,39 +16,60 @@ export function Eyebrow({
 }: {
   children: ReactNode;
   className?: string;
-  as?: "div" | "h2" | "h3" | "span";
+  as?: "div" | "h2" | "h3" | "span" | "p";
 }) {
-  return <Tag className={cx("eyebrow text-muted", className)}>{children}</Tag>;
+  return <Tag className={cx("label", className)}>{children}</Tag>;
 }
 
-/** A hairline. Used instead of wrapping regions in cards. */
+/** A section heading with room to breathe. */
+export function SectionTitle({
+  children,
+  hint,
+  action,
+  className,
+}: {
+  children: ReactNode;
+  hint?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cx("flex flex-wrap items-end justify-between gap-x-6 gap-y-2", className)}>
+      <div>
+        <h2 className="display text-2xl">{children}</h2>
+        {hint ? <p className="mt-1 text-[0.9375rem] text-muted">{hint}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
+}
+
 export function Rule({ className }: { className?: string }) {
   return <hr className={cx("border-0 border-t border-line", className)} />;
 }
 
 /* ---------------------------------------------------------------------------
- * Buttons
+ * Buttons — deliberately large. These get tapped on an iPad in a dim studio.
  * ------------------------------------------------------------------------ */
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-type ButtonSize = "sm" | "md";
+type ButtonSize = "sm" | "md" | "lg";
 
 const BUTTON_BASE =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm font-semibold " +
-  "transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold " +
+  "transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-  // Magenta fill carries near-black type: 5.2:1, and it reads far more
-  // confidently than white-on-pink.
-  primary: "bg-accent text-ink hover:bg-[#ff45a8] active:bg-[#e01286]",
-  secondary: "border border-ink/25 text-ink hover:border-ink hover:bg-ink hover:text-white",
-  ghost: "text-muted hover:bg-paper-sunk hover:text-ink",
-  danger: "border border-danger/40 text-danger hover:bg-danger hover:text-white",
+  primary: "bg-accent text-white shadow-soft hover:bg-[#e0117f] hover:shadow-lift",
+  secondary: "border border-line-strong bg-surface text-ink hover:border-ink hover:bg-sand",
+  ghost: "text-muted hover:bg-sand hover:text-ink",
+  danger: "border border-danger/30 bg-danger-soft text-danger hover:bg-danger hover:text-white",
 };
 
 const BUTTON_SIZE: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-[0.8125rem]",
-  md: "h-10 px-4 text-sm",
+  sm: "h-9 px-4 text-[0.9375rem]",
+  md: "h-12 px-6 text-base",
+  lg: "h-14 px-8 text-lg",
 };
 
 export function Button({
@@ -65,7 +86,6 @@ export function Button({
   );
 }
 
-/** Same visual language as Button, for links that act like actions. */
 export function buttonClass(
   variant: ButtonVariant = "secondary",
   size: ButtonSize = "md",
@@ -79,52 +99,57 @@ export function buttonClass(
  * ------------------------------------------------------------------------ */
 
 const CONTROL =
-  "w-full rounded-sm border border-line bg-white px-3 text-sm text-ink " +
-  "placeholder:text-muted/60 transition-colors " +
-  "hover:border-line-strong focus:border-ink focus:outline-none " +
-  "disabled:bg-paper-sunk disabled:text-muted";
+  "w-full rounded-xl border border-line-strong bg-surface px-4 text-base text-ink " +
+  "placeholder:text-muted/50 transition-colors " +
+  "hover:border-muted/50 focus:border-accent focus:outline-none " +
+  "disabled:bg-sand disabled:text-muted";
 
 export function Field({
   label,
   hint,
   error,
+  errorSlot,
   htmlFor,
   children,
   className,
 }: {
   label: string;
   hint?: string;
+  /** A message already in hand — used by the fully client-side forms. */
   error?: string;
+  /**
+   * A node that renders the server-side error for this field, used by forms
+   * whose page is a Server Component and cannot pass a callback down.
+   */
+  errorSlot?: ReactNode;
   htmlFor?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cx("flex flex-col gap-1.5", className)}>
-      <label htmlFor={htmlFor} className="eyebrow text-muted">
+    <div className={cx("flex flex-col gap-2", className)}>
+      <label htmlFor={htmlFor} className="label text-ink">
         {label}
       </label>
       {children}
-      {error ? (
-        <p className="text-[0.8125rem] text-danger">{error}</p>
-      ) : hint ? (
-        <p className="text-[0.8125rem] text-muted">{hint}</p>
-      ) : null}
+      {errorSlot}
+      {error ? <p className="text-[0.9375rem] font-medium text-danger">{error}</p> : null}
+      {hint && !error ? <p className="text-[0.9375rem] text-muted">{hint}</p> : null}
     </div>
   );
 }
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
-  return <input {...props} className={cx(CONTROL, "h-10", className)} />;
+  return <input {...props} className={cx(CONTROL, "h-12", className)} />;
 }
 
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
-  return <textarea {...props} className={cx(CONTROL, "min-h-24 py-2 leading-relaxed", className)} />;
+  return <textarea {...props} className={cx(CONTROL, "min-h-28 py-3 leading-relaxed", className)} />;
 }
 
 export function Select({ className, children, ...props }: ComponentProps<"select">) {
   return (
-    <select {...props} className={cx(CONTROL, "h-10 appearance-none pr-8", className)}>
+    <select {...props} className={cx(CONTROL, "h-12 appearance-none pr-10", className)}>
       {children}
     </select>
   );
@@ -137,24 +162,26 @@ export function Checkbox({
   ...props
 }: ComponentProps<"input"> & { label: string; description?: string }) {
   return (
-    <label className={cx("flex cursor-pointer items-start gap-2.5 py-1", className)}>
+    <label
+      className={cx(
+        "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-sand",
+        className,
+      )}
+    >
       <input
         type="checkbox"
         {...props}
-        className="mt-0.5 size-4 shrink-0 rounded-[2px] border border-line-strong accent-accent"
+        className="mt-0.5 size-5 shrink-0 rounded-md border-2 border-line-strong accent-accent"
       />
-      <span className="text-sm leading-snug">
-        <span className="text-ink">{label}</span>
-        {description ? <span className="block text-[0.8125rem] text-muted">{description}</span> : null}
+      <span className="leading-snug">
+        <span className="font-medium text-ink">{label}</span>
+        {description ? <span className="block text-[0.9375rem] text-muted">{description}</span> : null}
       </span>
     </label>
   );
 }
 
-/**
- * A ruled segmented control — used for internal/external and the calendar view
- * switch. Reads as one object rather than a row of pills.
- */
+/** A friendly pill switch — used for internal/external and calendar views. */
 export function Segmented<T extends string>({
   options,
   value,
@@ -172,7 +199,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={name}
-      className={cx("inline-flex rounded-sm border border-line bg-white p-0.5", className)}
+      className={cx("inline-flex rounded-full border border-line bg-sand p-1", className)}
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -184,8 +211,8 @@ export function Segmented<T extends string>({
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={cx(
-              "eyebrow rounded-[2px] px-3 py-2 transition-colors",
-              active ? "bg-ink text-white" : "text-muted hover:text-ink",
+              "rounded-full px-5 py-2.5 text-[0.9375rem] font-semibold transition-all",
+              active ? "bg-surface text-ink shadow-soft" : "text-muted hover:text-ink",
             )}
           >
             {o.label}
@@ -210,46 +237,51 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="border-t border-line py-16 text-center">
+    <div className="card mt-6 px-6 py-16 text-center">
       <p className="display text-2xl text-ink">{headline}</p>
-      {body ? <p className="mx-auto mt-2 max-w-md text-sm text-muted">{body}</p> : null}
-      {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
+      {body ? <p className="mx-auto mt-3 max-w-md text-muted">{body}</p> : null}
+      {action ? <div className="mt-8 flex justify-center">{action}</div> : null}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx("shimmer rounded-sm", className)} aria-hidden />;
+  return <div className={cx("shimmer rounded-xl", className)} aria-hidden />;
 }
 
-/**
- * Status is almost entirely monochrome on purpose. Only a live session earns
- * the accent — everything else is a small ruled tag.
- */
+/* ---------------------------------------------------------------------------
+ * Status
+ * ------------------------------------------------------------------------ */
+
+export type StatusTone = "live" | "ready" | "prep" | "neutral" | "done" | "off";
+
+const TONE: Record<StatusTone, string> = {
+  live: "bg-accent text-white",
+  ready: "bg-ready-soft text-ready",
+  prep: "bg-prep-soft text-prep",
+  neutral: "bg-sand text-muted",
+  done: "bg-ink text-white",
+  off: "bg-sand text-muted line-through",
+};
+
 export function StatusChip({
   label,
-  live = false,
-  muted = false,
+  tone = "neutral",
   className,
 }: {
   label: string;
-  live?: boolean;
-  muted?: boolean;
+  tone?: StatusTone;
   className?: string;
 }) {
   return (
     <span
       className={cx(
-        "eyebrow inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-1",
-        live
-          ? "border-accent bg-accent text-ink"
-          : muted
-            ? "border-line text-muted"
-            : "border-line-strong text-ink",
+        "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.9375rem] font-semibold",
+        TONE[tone],
         className,
       )}
     >
-      {live ? <span className="tally size-1.5 rounded-full bg-ink" aria-hidden /> : null}
+      {tone === "live" ? <span className="tally size-2 rounded-full bg-white" aria-hidden /> : null}
       {label}
     </span>
   );

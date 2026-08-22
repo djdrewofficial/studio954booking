@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { Field, Input, Textarea } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { canManageSettings } from "@/lib/domain";
@@ -17,26 +17,25 @@ export default async function StudioSettingsPage() {
   return (
     <fieldset disabled={readOnly} className="min-w-0">
       <SettingsForm action={saveStudioSettings}>
-        {(errors) => (
-          <>
+                  <>
             <section>
               <h2 className="eyebrow text-muted">Identity</h2>
               <div className="mt-4 grid gap-6 sm:grid-cols-2">
-                <Field label="Studio name" htmlFor="studioName" error={errors.studioName}>
+                <Field label="Studio name" htmlFor="studioName" errorSlot={<FormError name="studioName" />}>
                   <Input id="studioName" name="studioName" defaultValue={settings.studioName} />
                 </Field>
                 <Field
                   label="Timezone"
                   htmlFor="timezone"
                   hint="IANA name, e.g. America/New_York."
-                  error={errors.timezone}
+                  errorSlot={<FormError name="timezone" />}
                 >
                   <Input id="timezone" name="timezone" defaultValue={settings.timezone} />
                 </Field>
                 <Field
                   label="Booking contact email"
                   htmlFor="contactEmail"
-                  error={errors.contactEmail}
+                  errorSlot={<FormError name="contactEmail" />}
                 >
                   <Input
                     id="contactEmail"
@@ -49,7 +48,7 @@ export default async function StudioSettingsPage() {
                   label="Logo URL"
                   htmlFor="logoUrl"
                   hint="Shown in the masthead. Leave empty for the wordmark."
-                  error={errors.logoUrl}
+                  errorSlot={<FormError name="logoUrl" />}
                 >
                   <Input id="logoUrl" name="logoUrl" defaultValue={settings.logoUrl ?? ""} />
                 </Field>
@@ -101,7 +100,7 @@ export default async function StudioSettingsPage() {
                 <Field
                   label="Internal setup"
                   htmlFor="internalSetupMinutes"
-                  error={errors.internalSetupMinutes}
+                  errorSlot={<FormError name="internalSetupMinutes" />}
                 >
                   <Input
                     id="internalSetupMinutes"
@@ -116,7 +115,7 @@ export default async function StudioSettingsPage() {
                 <Field
                   label="Internal reset"
                   htmlFor="internalResetMinutes"
-                  error={errors.internalResetMinutes}
+                  errorSlot={<FormError name="internalResetMinutes" />}
                 >
                   <Input
                     id="internalResetMinutes"
@@ -131,7 +130,7 @@ export default async function StudioSettingsPage() {
                 <Field
                   label="External setup"
                   htmlFor="externalSetupMinutes"
-                  error={errors.externalSetupMinutes}
+                  errorSlot={<FormError name="externalSetupMinutes" />}
                 >
                   <Input
                     id="externalSetupMinutes"
@@ -146,7 +145,7 @@ export default async function StudioSettingsPage() {
                 <Field
                   label="External reset"
                   htmlFor="externalResetMinutes"
-                  error={errors.externalResetMinutes}
+                  errorSlot={<FormError name="externalResetMinutes" />}
                 >
                   <Input
                     id="externalResetMinutes"
@@ -176,7 +175,6 @@ export default async function StudioSettingsPage() {
               </Field>
             </section>
           </>
-        )}
       </SettingsForm>
     </fieldset>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SettingsForm } from "@/components/settings/form";
+import { FormError, SettingsForm } from "@/components/settings/form";
 import { ArchiveToggle } from "@/components/settings/toggles";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -62,14 +62,11 @@ export default async function SetOptionsPage() {
                   <div className="pb-6">
                     <fieldset disabled={readOnly}>
                       <SettingsForm action={saveSetOption}>
-                        {(errors) => (
-                          <OptionFields
-                            errors={errors}
+                                                  <OptionFields
                             categoryId={category.id}
                             sets={sets}
                             option={option}
                           />
-                        )}
                       </SettingsForm>
                     </fieldset>
                     {!readOnly ? (
@@ -91,9 +88,7 @@ export default async function SetOptionsPage() {
               <div className="pb-6">
                 <fieldset disabled={readOnly}>
                   <SettingsForm action={saveSetOption} submitLabel="Add option">
-                    {(errors) => (
-                      <OptionFields errors={errors} categoryId={category.id} sets={sets} />
-                    )}
+                                          <OptionFields categoryId={category.id} sets={sets} />
                   </SettingsForm>
                 </fieldset>
               </div>
@@ -120,12 +115,10 @@ export default async function SetOptionsPage() {
                 <div className="pb-6">
                   <fieldset disabled={readOnly}>
                     <SettingsForm action={saveOptionCategory}>
-                      {(errors) => (
-                        <>
+                                              <>
                           <input type="hidden" name="id" value={category.id} />
-                          <CategoryFields errors={errors} category={category} />
+                          <CategoryFields category={category} />
                         </>
-                      )}
                     </SettingsForm>
                   </fieldset>
                 </div>
@@ -140,7 +133,7 @@ export default async function SetOptionsPage() {
             <div className="pb-6">
               <fieldset disabled={readOnly}>
                 <SettingsForm action={saveOptionCategory} submitLabel="Create category">
-                  {(errors) => <CategoryFields errors={errors} />}
+                  <CategoryFields />
                 </SettingsForm>
               </fieldset>
             </div>
@@ -152,12 +145,10 @@ export default async function SetOptionsPage() {
 }
 
 function OptionFields({
-  errors,
   categoryId,
   sets,
   option,
 }: {
-  errors: Record<string, string>;
   categoryId: string;
   sets: StudioSet[];
   option?: SetOptionWithScope;
@@ -168,16 +159,16 @@ function OptionFields({
       {option ? <input type="hidden" name="id" value={option.id} /> : null}
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Name" error={errors.name}>
+        <Field label="Name" errorSlot={<FormError name="name" />}>
           <Input name="name" defaultValue={option?.name ?? ""} required />
         </Field>
-        <Field label="Swatch colour" hint="Optional hex, e.g. #D8C7A8." error={errors.swatchHex}>
+        <Field label="Swatch colour" hint="Optional hex, e.g. #D8C7A8." errorSlot={<FormError name="swatchHex" />}>
           <Input name="swatchHex" defaultValue={option?.swatchHex ?? ""} placeholder="#D8C7A8" />
         </Field>
-        <Field label="Image URL" error={errors.imageUrl}>
+        <Field label="Image URL" errorSlot={<FormError name="imageUrl" />}>
           <Input name="imageUrl" defaultValue={option?.imageUrl ?? ""} />
         </Field>
-        <Field label="Description" error={errors.description}>
+        <Field label="Description" errorSlot={<FormError name="description" />}>
           <Textarea name="description" rows={2} defaultValue={option?.description ?? ""} />
         </Field>
       </div>
@@ -206,19 +197,17 @@ function OptionFields({
 }
 
 function CategoryFields({
-  errors,
   category,
 }: {
-  errors: Record<string, string>;
   category?: { name: string; slug: string; allowsMultiple: boolean; isRequired: boolean; isActive: boolean };
 }) {
   return (
     <>
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Name" error={errors.name}>
+        <Field label="Name" errorSlot={<FormError name="name" />}>
           <Input name="name" defaultValue={category?.name ?? ""} required />
         </Field>
-        <Field label="Slug" hint="Lowercase, no spaces." error={errors.slug}>
+        <Field label="Slug" hint="Lowercase, no spaces." errorSlot={<FormError name="slug" />}>
           <Input name="slug" defaultValue={category?.slug ?? ""} required />
         </Field>
       </div>

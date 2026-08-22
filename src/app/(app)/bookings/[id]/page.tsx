@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BookingActions } from "@/components/booking-actions";
 import { SetupRecipe } from "@/components/setup-recipe";
 import { StatusAction } from "@/components/status-action";
-import { Eyebrow, StatusChip } from "@/components/ui";
+import { StatusChip } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import {
   BOOKING_KIND_LABEL,
   BOOKING_STATUS_LABEL,
   BOOKING_TYPE_LABEL,
-  isLiveStatus,
+  STATUS_TONE,
   type BookingKind,
   type BookingStatus,
   type BookingType,
@@ -20,7 +21,6 @@ import { formatDate, formatDayLong, formatDuration, formatTime, formatTimeRange 
 import { getBookingDetail, getNotificationLog } from "@/server/bookings";
 import { isEmailConfigured } from "@/server/email/mailer";
 import { formatStudioAddress, getStudioSettings } from "@/server/settings";
-
 
 export async function generateMetadata({
   params,
@@ -53,116 +53,131 @@ export default async function BookingDetailPage({
     (detail.endsAt.getTime() - detail.startsAt.getTime()) / 60_000,
   );
 
+  const setup = detail.setup.map((line) => ({
+    categoryName: line.categoryName,
+    categorySlug: line.categorySlug,
+    options: line.options.map((o) => ({
+      name: o.name,
+      swatchHex: o.swatchHex,
+      imageUrl: o.imageUrl,
+    })),
+  }));
+
   return (
-    <div className="pt-10">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+    <div className="pt-8">
+      <Link
+        href="/bookings"
+        className="inline-flex items-center gap-2 font-semibold text-muted hover:text-ink"
+      >
+        ← All bookings
+      </Link>
+
+      <div className="mt-6 flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
         <div className="min-w-0">
-          <p className="eyebrow text-muted">
-            {BOOKING_KIND_LABEL[detail.kind as BookingKind]}
-            <span className="mx-2 text-line-strong">/</span>
-            {BOOKING_TYPE_LABEL[detail.bookingType as BookingType]}
-          </p>
-          <h1 className="display mt-3 text-4xl sm:text-6xl">{detail.title}</h1>
-          {detail.clientName ? (
-            <p className="mt-2 text-lg text-muted">{detail.clientName}</p>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusChip label={BOOKING_STATUS_LABEL[status]} tone={STATUS_TONE[status]} />
+            <span className="rounded-full bg-sand px-3.5 py-1.5 font-semibold text-muted">
+              {BOOKING_TYPE_LABEL[detail.bookingType as BookingType]}
+            </span>
+            <span className="rounded-full bg-sand px-3.5 py-1.5 font-semibold text-muted">
+              {BOOKING_KIND_LABEL[detail.kind as BookingKind]}
+            </span>
+          </div>
+          <h1 className="display mt-4 text-4xl sm:text-5xl">{detail.title}</h1>
+          {detail.clientName ? <p className="mt-2 text-xl text-muted">{detail.clientName}</p> : null}
         </div>
 
-        <div className="flex flex-col items-start gap-3 sm:items-end">
-          <StatusChip
-            label={BOOKING_STATUS_LABEL[status]}
-            live={isLiveStatus(status)}
-            muted={status === "upcoming" || status === "cancelled"}
-          />
-          <StatusAction bookingId={detail.id} status={status} showOverride size="md" />
-        </div>
+        <StatusAction bookingId={detail.id} status={status} showOverride size="md" />
       </div>
 
-      {/* When */}
-      <div className="mt-10 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-y border-line py-5">
+      <div className="card mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 px-7 py-6">
         <span className="display text-2xl">{formatDayLong(detail.startsAt, tz)}</span>
-        <span className="timecode text-lg text-ink">
+        <span className="timecode text-2xl text-accent-ink">
           {formatTimeRange(detail.startsAt, detail.endsAt, tz)}
         </span>
-        <span className="eyebrow text-muted">{formatDuration(durationMinutes)}</span>
+        <span className="rounded-full bg-sand px-4 py-1.5 font-semibold text-muted">
+          {formatDuration(durationMinutes)}
+        </span>
       </div>
 
-      <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-16">
-        {/* ---- Left: how the room has to look --------------------------- */}
-        <div>
-          <section>
-            <Eyebrow as="h2">Studio setup</Eyebrow>
-            {detail.set ? (
-              <>
-                <p className="display mt-4 text-3xl">{detail.set.name}</p>
-                {detail.set.description ? (
-                  <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted">
-                    {detail.set.description}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="mt-4 text-sm text-muted">
-                No set chosen yet.{" "}
-                <Link href={`/bookings/${id}/edit`} className="underline underline-offset-2">
-                  Pick one
-                </Link>
-                .
-              </p>
-            )}
-
-            {detail.setup.length ? (
-              <SetupRecipe
-                setup={detail.setup.map((line) => ({
-                  categoryName: line.categoryName,
-                  categorySlug: line.categorySlug,
-                  options: line.options.map((o) => ({ name: o.name, swatchHex: o.swatchHex })),
-                }))}
-                layout="block"
-                className="mt-6"
-              />
-            ) : null}
-
-            {detail.microphoneCount > 0 ? (
-              <div className="mt-4 flex items-baseline justify-between border-b border-line py-3">
-                <Eyebrow>Microphones</Eyebrow>
-                <span className="timecode text-[0.9375rem]">{detail.microphoneCount}</span>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {/* ---- How the room has to look ------------------------------- */}
+        <div className="flex flex-col gap-6">
+          <section className="card overflow-hidden">
+            {detail.set?.imageUrl ? (
+              <div className="relative aspect-[21/9] w-full bg-sand">
+                <Image
+                  src={detail.set.imageUrl}
+                  alt={detail.set.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 700px"
+                  unoptimized
+                />
               </div>
             ) : null}
+
+            <div className="px-7 py-6">
+              <p className="label">How the studio should look</p>
+              {detail.set ? (
+                <>
+                  <h2 className="display mt-2 text-3xl">{detail.set.name}</h2>
+                  {detail.set.description ? (
+                    <p className="mt-2 max-w-prose text-muted">{detail.set.description}</p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-3 text-muted">
+                  No set chosen yet.{" "}
+                  <Link
+                    href={`/bookings/${id}/edit`}
+                    className="font-semibold text-accent-ink underline underline-offset-2"
+                  >
+                    Pick one
+                  </Link>
+                  .
+                </p>
+              )}
+
+              {setup.length ? <SetupRecipe setup={setup} className="mt-6" /> : null}
+
+              {detail.microphoneCount > 0 ? (
+                <p className="mt-6 inline-block rounded-full bg-sand px-4 py-2 font-semibold">
+                  {detail.microphoneCount} microphone{detail.microphoneCount === 1 ? "" : "s"}
+                </p>
+              ) : null}
+            </div>
           </section>
 
           {detail.notes ? (
-            <section className="mt-12">
-              <Eyebrow as="h2">Notes</Eyebrow>
-              <p className="mt-4 max-w-prose whitespace-pre-line text-[0.9375rem] leading-relaxed">
-                {detail.notes}
-              </p>
+            <section className="card px-7 py-6">
+              <p className="label">Notes</p>
+              <p className="mt-3 max-w-prose whitespace-pre-line leading-relaxed">{detail.notes}</p>
             </section>
           ) : null}
 
           {detail.internalNotes ? (
-            <section className="mt-10 border-l-2 border-line-strong pl-5">
-              <Eyebrow as="h2">Internal only</Eyebrow>
-              <p className="mt-3 max-w-prose whitespace-pre-line text-[0.9375rem] leading-relaxed text-muted">
+            <section className="card border-l-4 border-l-prep px-7 py-6">
+              <p className="label text-prep">Team only — not shared with the client</p>
+              <p className="mt-3 max-w-prose whitespace-pre-line leading-relaxed text-muted">
                 {detail.internalNotes}
               </p>
             </section>
           ) : null}
 
           {detail.addons.length ? (
-            <section className="mt-12">
-              <Eyebrow as="h2">Add-ons</Eyebrow>
-              <ul className="mt-4 divide-y divide-line border-y border-line">
+            <section className="card px-7 py-6">
+              <p className="label">Add-ons</p>
+              <ul className="mt-4 flex flex-col gap-3">
                 {detail.addons.map((addon) => (
-                  <li key={addon.addonId} className="flex items-baseline justify-between gap-4 py-3">
-                    <span className="text-[0.9375rem]">
+                  <li key={addon.addonId} className="flex items-baseline justify-between gap-4">
+                    <span className="font-medium">
                       {addon.name}
                       {addon.quantity > 1 ? (
                         <span className="ml-2 text-muted">× {addon.quantity}</span>
                       ) : null}
                     </span>
-                    <span className="timecode text-sm text-muted">
+                    <span className="timecode text-muted">
                       ${((addon.priceCents * addon.quantity) / 100).toFixed(2)}
                     </span>
                   </li>
@@ -171,133 +186,131 @@ export default async function BookingDetailPage({
             </section>
           ) : null}
 
-          <div className="mt-12 border-t border-line pt-6">
-            <BookingActions
-              bookingId={detail.id}
-              isCancelled={status === "cancelled"}
-              isRecurring={Boolean(detail.recurrenceGroupId)}
-              emailConfigured={isEmailConfigured()}
-            />
-          </div>
+          <BookingActions
+            bookingId={detail.id}
+            isCancelled={status === "cancelled"}
+            isRecurring={Boolean(detail.recurrenceGroupId)}
+            emailConfigured={isEmailConfigured()}
+          />
         </div>
 
-        {/* ---- Right: schedule and people ------------------------------- */}
-        <aside className="flex flex-col gap-10">
-          <section>
-            <Eyebrow as="h2">Schedule</Eyebrow>
-            <dl className="mt-4 divide-y divide-line border-y border-line">
+        {/* ---- Schedule and people ------------------------------------ */}
+        <aside className="flex flex-col gap-6">
+          <section className="card px-7 py-6">
+            <p className="label">Studio schedule</p>
+            <ul className="mt-4 flex flex-col gap-3">
               {detail.setupMinutes > 0 ? (
-                <Row
-                  label="Setup"
+                <TimeRow
+                  label="Set up"
                   value={`${formatTime(setupAt, tz)} – ${formatTime(detail.startsAt, tz)}`}
-                  muted
+                  tone="prep"
                 />
               ) : null}
-              <Row
+              <TimeRow
                 label="Session"
                 value={formatTimeRange(detail.startsAt, detail.endsAt, tz)}
-                emphasis
+                tone="accent"
               />
               {detail.resetMinutes > 0 ? (
-                <Row
+                <TimeRow
                   label="Reset"
                   value={`${formatTime(detail.endsAt, tz)} – ${formatTime(resetUntil, tz)}`}
-                  muted
+                  tone="prep"
                 />
               ) : null}
-              <Row
-                label="Room held"
+              <TimeRow
+                label="Room held for"
                 value={formatDuration(durationMinutes + detail.setupMinutes + detail.resetMinutes)}
               />
-            </dl>
+            </ul>
             {formatStudioAddress(settings) ? (
-              <p className="mt-3 text-[0.8125rem] leading-relaxed text-muted">
+              <p className="mt-5 text-[0.9375rem] leading-relaxed text-muted">
                 {formatStudioAddress(settings)}
               </p>
             ) : null}
           </section>
 
-          <section>
-            <Eyebrow as="h2">Organizer</Eyebrow>
-            <div className="mt-4 border-y border-line py-3">
-              <p className="text-[0.9375rem]">{detail.organizerName}</p>
+          <section className="card px-7 py-6">
+            <p className="label">Organizer</p>
+            <p className="mt-3 text-lg font-semibold">{detail.organizerName}</p>
+            <a
+              href={`mailto:${detail.organizerEmail}`}
+              className="block break-words text-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              {detail.organizerEmail}
+            </a>
+            {detail.organizerPhone ? (
               <a
-                href={`mailto:${detail.organizerEmail}`}
-                className="block text-sm text-muted underline-offset-2 hover:text-ink hover:underline"
+                href={`tel:${detail.organizerPhone}`}
+                className="timecode mt-1 block text-muted hover:text-ink"
               >
-                {detail.organizerEmail}
+                {detail.organizerPhone}
               </a>
-              {detail.organizerPhone ? (
-                <a
-                  href={`tel:${detail.organizerPhone}`}
-                  className="timecode block text-sm text-muted hover:text-ink"
-                >
-                  {detail.organizerPhone}
-                </a>
-              ) : null}
-            </div>
+            ) : null}
           </section>
 
-          <section>
-            <Eyebrow as="h2">
-              Attendees {detail.attendees.length ? `(${detail.attendees.length})` : ""}
-            </Eyebrow>
+          <section className="card px-7 py-6">
+            <p className="label">
+              Who&rsquo;s coming {detail.attendees.length ? `(${detail.attendees.length})` : ""}
+            </p>
             {detail.attendees.length ? (
-              <ul className="mt-4 divide-y divide-line border-y border-line">
+              <ul className="mt-4 flex flex-col gap-4">
                 {detail.attendees.map((attendee) => (
-                  <li key={attendee.id} className="flex items-start justify-between gap-3 py-3">
+                  <li key={attendee.id} className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-[0.9375rem]">{attendee.name}</p>
+                      <p className="truncate font-medium">{attendee.name}</p>
                       {attendee.email ? (
-                        <p className="truncate text-sm text-muted">{attendee.email}</p>
+                        <p className="truncate text-[0.9375rem] text-muted">{attendee.email}</p>
                       ) : null}
                     </div>
-                    {attendee.notify ? (
-                      <span className="eyebrow shrink-0 pt-1 text-muted">Notified</span>
-                    ) : (
-                      <span className="eyebrow shrink-0 pt-1 text-line-strong">Silent</span>
-                    )}
+                    <span
+                      className={
+                        attendee.notify
+                          ? "shrink-0 rounded-full bg-ready-soft px-3 py-1 text-[0.8125rem] font-semibold text-ready"
+                          : "shrink-0 rounded-full bg-sand px-3 py-1 text-[0.8125rem] font-semibold text-muted"
+                      }
+                    >
+                      {attendee.notify ? "Emailed" : "Not emailed"}
+                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 text-sm text-muted">Just the organizer.</p>
+              <p className="mt-3 text-muted">Just the organizer so far.</p>
             )}
           </section>
 
-          <section>
-            <Eyebrow as="h2">Notifications</Eyebrow>
+          <section className="card px-7 py-6">
+            <p className="label">Emails sent</p>
             {log.length ? (
-              <ul className="mt-4 divide-y divide-line border-y border-line">
-                {log.slice(0, 8).map((entry) => (
-                  <li key={entry.id} className="py-2.5">
+              <ul className="mt-4 flex flex-col gap-3">
+                {log.slice(0, 6).map((entry) => (
+                  <li key={entry.id}>
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="eyebrow text-ink">{entry.kind.replace(/_/g, " ")}</span>
+                      <span className="font-medium capitalize">{entry.kind.replace(/_/g, " ")}</span>
                       <span
                         className={
-                          entry.status === "sent"
-                            ? "eyebrow text-muted"
-                            : entry.status === "failed"
-                              ? "eyebrow text-danger"
-                              : "eyebrow text-line-strong"
+                          entry.status === "failed"
+                            ? "text-[0.9375rem] font-semibold text-danger"
+                            : "text-[0.9375rem] text-muted"
                         }
                       >
                         {entry.status}
                       </span>
                     </div>
-                    <p className="mt-1 truncate text-[0.8125rem] text-muted">
+                    <p className="truncate text-[0.9375rem] text-muted">
                       {entry.recipientEmail} · {formatDate(entry.createdAt, tz)}
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 text-sm text-muted">Nothing sent yet.</p>
+              <p className="mt-3 text-muted">Nothing sent yet.</p>
             )}
           </section>
 
           {detail.googleEventId ? (
-            <p className="eyebrow text-muted">Synced to Google Calendar</p>
+            <p className="text-center font-semibold text-ready">On the Google Calendar</p>
           ) : null}
         </aside>
       </div>
@@ -305,31 +318,29 @@ export default async function BookingDetailPage({
   );
 }
 
-function Row({
+function TimeRow({
   label,
   value,
-  muted,
-  emphasis,
+  tone,
 }: {
   label: string;
   value: string;
-  muted?: boolean;
-  emphasis?: boolean;
+  tone?: "prep" | "accent";
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2.5">
-      <dt className="eyebrow text-muted">{label}</dt>
-      <dd
+    <li className="flex items-baseline justify-between gap-4">
+      <span className="text-muted">{label}</span>
+      <span
         className={
-          emphasis
-            ? "timecode text-sm font-medium text-ink"
-            : muted
-              ? "timecode text-sm text-muted"
-              : "timecode text-sm text-ink"
+          tone === "accent"
+            ? "timecode text-lg text-accent-ink"
+            : tone === "prep"
+              ? "timecode text-prep"
+              : "timecode"
         }
       >
         {value}
-      </dd>
-    </div>
+      </span>
+    </li>
   );
 }
