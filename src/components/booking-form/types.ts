@@ -26,6 +26,15 @@ export type BookingFormValues = {
 
   attendees: { name: string; email: string; notify: boolean }[];
 
+  usesTeleprompter: boolean;
+  /** Uploaded to storage first, so a script can be attached before saving. */
+  teleprompterFiles: {
+    fileName: string;
+    storagePath: string;
+    contentType?: string;
+    sizeBytes?: number;
+  }[];
+
   recurrence: RecurrenceFrequency;
   recurrenceUntil: string;
 };

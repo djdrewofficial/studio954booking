@@ -154,6 +154,9 @@ export default async function PrepSheetPage({
                     label="Microphones"
                     value={row.microphoneCount > 0 ? String(row.microphoneCount) : "—"}
                   />
+                  {row.usesTeleprompter ? (
+                    <PrepRow label="Teleprompter" value="Yes — load the script" />
+                  ) : null}
                   <PrepRow label="Attendees" value={String(row.attendeeCount)} />
                   <PrepRow label="Organizer" value={row.organizerName} />
                 </dl>

@@ -22,6 +22,7 @@ import {
   addons,
   bookingAddons,
   bookingAttendees,
+  bookingFiles,
   bookingSetOptions,
   bookings,
   notificationLogs,
@@ -59,6 +60,7 @@ const listColumns = {
   organizerEmail: bookings.organizerEmail,
   notes: bookings.notes,
   microphoneCount: bookings.microphoneCount,
+  usesTeleprompter: bookings.usesTeleprompter,
   setName: studioSets.name,
   attendeeCount: attendeeCountSql,
 };
@@ -128,7 +130,7 @@ export async function getBookingDetail(id: string) {
   const row = rows[0];
   if (!row) return null;
 
-  const [attendees, options, addonRows] = await Promise.all([
+  const [attendees, options, addonRows, files] = await Promise.all([
     db
       .select()
       .from(bookingAttendees)
@@ -162,12 +164,17 @@ export async function getBookingDetail(id: string) {
       .innerJoin(addons, eq(addons.id, bookingAddons.addonId))
       .where(eq(bookingAddons.bookingId, id))
       .orderBy(asc(addons.sortOrder)),
+    db
+      .select()
+      .from(bookingFiles)
+      .where(eq(bookingFiles.bookingId, id))
+      .orderBy(asc(bookingFiles.createdAt)),
   ]);
 
   /** Options regrouped into the call-sheet shape: one line per category. */
   const setup = groupOptionsByCategory(options);
 
-  return { ...row.booking, set: row.set, attendees, options, setup, addons: addonRows };
+  return { ...row.booking, set: row.set, attendees, options, setup, addons: addonRows, files };
 }
 
 export type SetupLine = {
@@ -405,6 +412,7 @@ export async function createBookings(
             notes: input.notes ?? null,
             internalNotes: input.internalNotes ?? null,
             microphoneCount: input.microphoneCount,
+            usesTeleprompter: input.usesTeleprompter,
             recurrenceGroupId,
             createdById: ctx.userId,
           })
@@ -457,12 +465,14 @@ export async function updateBooking(
           notes: input.notes ?? null,
           internalNotes: input.internalNotes ?? null,
           microphoneCount: input.microphoneCount,
+          usesTeleprompter: input.usesTeleprompter,
           updatedAt: new Date(),
         })
         .where(eq(bookings.id, id));
 
       await tx.delete(bookingSetOptions).where(eq(bookingSetOptions.bookingId, id));
       await tx.delete(bookingAttendees).where(eq(bookingAttendees.bookingId, id));
+      await tx.delete(bookingFiles).where(eq(bookingFiles.bookingId, id));
       await writeChildren(tx, id, input);
     });
   } catch (error) {
@@ -486,6 +496,18 @@ async function writeChildren(tx: Tx, bookingId: string, input: BookingInput) {
         name: a.name,
         email: a.email ?? null,
         notify: a.notify,
+      })),
+    );
+  }
+  if (input.teleprompterFiles.length) {
+    await tx.insert(bookingFiles).values(
+      input.teleprompterFiles.map((f) => ({
+        bookingId,
+        kind: "teleprompter_script",
+        fileName: f.fileName,
+        storagePath: f.storagePath,
+        contentType: f.contentType ?? null,
+        sizeBytes: f.sizeBytes ?? null,
       })),
     );
   }
@@ -526,6 +548,9 @@ export async function getDuplicateTemplate(id: string) {
     notes: detail.notes ?? undefined,
     internalNotes: detail.internalNotes ?? undefined,
     microphoneCount: detail.microphoneCount,
+    // The teleprompter itself carries over; the script does not, since a new
+    // date almost always means new copy.
+    usesTeleprompter: detail.usesTeleprompter,
     attendees: detail.attendees.map((a) => ({
       name: a.name,
       email: a.email ?? undefined,

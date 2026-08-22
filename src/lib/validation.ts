@@ -97,6 +97,23 @@ export const bookingSchema = z
 
     attendees: z.array(attendeeSchema).max(50).default([]),
 
+    usesTeleprompter: z.boolean().default(false),
+    /**
+     * Scripts are uploaded to storage first, then referenced here, so a
+     * booking can carry its copy before it has ever been saved.
+     */
+    teleprompterFiles: z
+      .array(
+        z.object({
+          fileName: z.string().trim().min(1).max(255),
+          storagePath: z.string().trim().min(1).max(500),
+          contentType: z.string().max(160).optional(),
+          sizeBytes: z.coerce.number().int().min(0).max(50_000_000).optional(),
+        }),
+      )
+      .max(10)
+      .default([]),
+
     recurrence: z.enum(RECURRENCE_FREQUENCIES).default("none"),
     recurrenceUntil: isoDate.optional().or(z.literal("").transform(() => undefined)),
   })

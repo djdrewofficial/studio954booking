@@ -10,6 +10,7 @@ import {
   RECURRENCE_FREQUENCIES,
   RECURRENCE_LABEL,
 } from "@/lib/domain";
+import { ScriptUpload } from "@/components/script-upload";
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea, cx } from "@/components/ui";
 
 import type { BookingFormValues, OptionCategoryChoice, StudioSetChoice } from "./types";
@@ -449,6 +450,23 @@ export function StepPeople({
               onChange={(e) => patch({ microphoneCount: Number(e.target.value) })}
             />
           </Field>
+        </div>
+
+        <div className="mt-6 rounded-2xl bg-sand p-5">
+          <Checkbox
+            label="Using the teleprompter"
+            description="Upload the script now and it will be loaded before anyone arrives."
+            checked={values.usesTeleprompter}
+            onChange={(e) => patch({ usesTeleprompter: e.target.checked })}
+          />
+          {values.usesTeleprompter ? (
+            <div className="mt-4">
+              <ScriptUpload
+                files={values.teleprompterFiles}
+                onChange={(teleprompterFiles) => patch({ teleprompterFiles })}
+              />
+            </div>
+          ) : null}
         </div>
 
         <Field

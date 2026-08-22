@@ -149,6 +149,50 @@ export default async function BookingDetailPage({
             </div>
           </section>
 
+          {detail.usesTeleprompter ? (
+            <section className="card px-7 py-6">
+              <p className="label">Teleprompter</p>
+              {detail.files.length ? (
+                <>
+                  <p className="mt-2 font-semibold text-ready">
+                    Script ready — load it before the session
+                  </p>
+                  <ul className="mt-4 flex flex-col gap-2">
+                    {detail.files.map((file) => (
+                      <li
+                        key={file.id}
+                        className="flex items-center justify-between gap-4 rounded-2xl bg-sand px-4 py-3"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold">{file.fileName}</span>
+                          {file.sizeBytes ? (
+                            <span className="text-[0.9375rem] text-muted">
+                              {file.sizeBytes < 1024 * 1024
+                                ? `${Math.round(file.sizeBytes / 1024)} KB`
+                                : `${(file.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
+                            </span>
+                          ) : null}
+                        </span>
+                        <a
+                          href={`/api/files/${file.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 rounded-full bg-ink px-4 py-2 font-semibold text-white transition-colors hover:bg-ink-raised"
+                        >
+                          Open
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="mt-2 font-semibold text-prep">
+                  No script uploaded yet — ask the client to send it before the session.
+                </p>
+              )}
+            </section>
+          ) : null}
+
           {detail.notes ? (
             <section className="card px-7 py-6">
               <p className="label">Notes</p>

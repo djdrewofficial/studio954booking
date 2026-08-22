@@ -86,6 +86,8 @@ export async function newBookingDefaults(
     internalNotes: "",
     microphoneCount: 0,
     attendees: [],
+    usesTeleprompter: false,
+    teleprompterFiles: [],
     recurrence: "none",
     recurrenceUntil: "",
   };
@@ -112,6 +114,7 @@ export async function newBookingDefaults(
     notes: template.notes ?? "",
     internalNotes: template.internalNotes ?? "",
     microphoneCount: template.microphoneCount,
+    usesTeleprompter: template.usesTeleprompter,
     attendees: template.attendees.map((a) => ({
       name: a.name,
       email: a.email ?? "",
@@ -149,6 +152,15 @@ export async function bookingToFormValues(id: string): Promise<BookingFormValues
       email: a.email ?? "",
       notify: a.notify,
     })),
+    usesTeleprompter: detail.usesTeleprompter,
+    teleprompterFiles: detail.files
+      .filter((f) => f.kind === "teleprompter_script")
+      .map((f) => ({
+        fileName: f.fileName,
+        storagePath: f.storagePath,
+        contentType: f.contentType ?? undefined,
+        sizeBytes: f.sizeBytes ?? undefined,
+      })),
     recurrence: "none",
     recurrenceUntil: "",
   };
