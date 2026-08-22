@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -117,15 +118,16 @@ function FilterLink({
   label: string;
 }) {
   return (
-    <a
+    <Link
       href={href}
+      scroll={false}
       aria-current={active ? "true" : undefined}
       className={cx(
-        "eyebrow border-b-2 pb-0.5 transition-colors",
-        active ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink",
+        "rounded-full px-4 py-2 font-semibold transition-colors",
+        active ? "bg-ink text-white" : "text-muted hover:bg-sand hover:text-ink",
       )}
     >
       {label}
-    </a>
+    </Link>
   );
 }
