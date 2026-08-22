@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   STUDIO 954 — design tokens
+   ---------------------------------------------------------------------------
+   The interface is modelled on a broadcast rundown / production call sheet:
+   information sits in ruled rows rather than cards, hierarchy comes from type
+   scale and hairlines, and the magenta accent is rationed to exactly four
+   jobs — the live indicator, primary actions, focus rings, and the active nav
+   underline. Nothing else gets to be pink.
+   ======================================================================== */
+
+@theme {
+  /* -- Surfaces ---------------------------------------------------------- */
+  --color-ink: #0a0a0b; /* near-black: masthead, display type */
+  --color-ink-raised: #16161a; /* raised surfaces on dark */
+  --color-ink-line: #2a2a30; /* hairline on dark */
+  --color-ink-muted: #8b8880; /* secondary type on dark */
+
+  --color-paper: #faf9f6; /* warm off-white workspace */
+  --color-paper-raised: #ffffff; /* inset panels, used sparingly */
+  --color-paper-sunk: #f2f0ea; /* buffer blocks, table headers */
+  --color-line: #e3e0d9; /* hairline on paper */
+  --color-line-strong: #cfcbc1; /* emphasised rule */
+  --color-muted: #6e6b64; /* secondary type on paper */
+
+  /* -- Accent ------------------------------------------------------------
+     `accent` is the brand magenta, used as a fill or on dark grounds.
+     `accent-ink` is a darkened sibling for accent-coloured *text* on paper,
+     where the raw brand colour only reaches 3.6:1 against off-white.
+     Magenta fills always carry near-black type, never white — it reads more
+     confidently and clears AA at 5.2:1. */
+  --color-accent: #f92998;
+  --color-accent-ink: #db0f80;
+  --color-accent-wash: #fdeaf4;
+
+  /* The one other colour in the product. Reserved for destructive intent,
+     where a second meaning genuinely exists and grey would be dishonest. */
+  --color-danger: #a61b1b;
+
+  /* -- Type -------------------------------------------------------------- */
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+
+  /* -- Geometry ----------------------------------------------------------
+     Deliberately shallow. Nothing in this product is a rounded card. */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+
+  /* -- Motion ------------------------------------------------------------ */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ===========================================================================
+   Base
+   ======================================================================== */
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv05";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-ink);
+}
+
+/* A single, consistent focus treatment across the whole product. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* ===========================================================================
+   Typographic utilities
+   ---------------------------------------------------------------------------
+   The eyebrow is the signature of this interface: wide-tracked caps, small,
+   used to label every region instead of wrapping it in a card.
+   ======================================================================== */
+
+@utility eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility eyebrow-lg {
+  font-size: 0.8125rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/** Timecodes, durations, counts — always mono, always tabular. */
+@utility timecode {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/** Large display type: tightened, because it is set at scale. */
+@utility display {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+/* ===========================================================================
+   Motion — subtle, functional, and fully disabled on request
+   ======================================================================== */
+
+@keyframes s954-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes s954-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes s954-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@utility rise {
+  animation: s954-rise 0.32s var(--ease-out-quint) both;
+}
+
+/** The tally light next to a session that is happening right now. */
+@utility tally {
+  animation: s954-pulse 2s ease-in-out infinite;
+}
+
+/** Skeleton shimmer for loading states. */
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-paper-sunk) 0%,
+    var(--color-line) 40%,
+    var(--color-paper-sunk) 80%
+  );
+  background-size: 200% 100%;
+  animation: s954-sweep 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===========================================================================
+   Print — the prep sheet is a real deliverable, not a screenshot
+   ======================================================================== */
+
+@media print {
+  @page {
+    margin: 14mm;
+    size: portrait;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  [data-print="block"] {
+    display: block !important;
+  }
+
+  /* Keep a session and its setup details on one page. */
+  [data-print="keep"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  [data-print="break"] {
+    break-before: page;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}
