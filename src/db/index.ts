@@ -16,9 +16,12 @@ const globalForDb = globalThis as unknown as {
   studio954Db?: PostgresJsDatabase<typeof schema>;
 };
 
+/** Tokens that survive from .env.example when the file has not been filled in. */
+const PLACEHOLDERS = ["YOUR-PASSWORD", "PROJECT_REF"];
+
 function connect() {
   const url = process.env.DATABASE_URL;
-  if (!url) {
+  if (!url || PLACEHOLDERS.some((token) => url.includes(token))) {
     throw new Error(
       "DATABASE_URL is not set. Copy .env.example to .env.local and fill in the Supabase connection string.",
     );

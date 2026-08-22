@@ -23,7 +23,11 @@ export function ErrorScreen({
     console.error(error);
   }, [error]);
 
-  const missingDatabase = error.message.includes("DATABASE_URL");
+  // Either the variable is unset/unfilled, or it is set but the database
+  // refused us. Both mean the same thing to whoever is setting this up.
+  const missingDatabase =
+    error.message.includes("DATABASE_URL") ||
+    /Failed query|ECONNREFUSED|ENOTFOUND|password authentication|SASL/i.test(error.message);
 
   const body = (
     <>
