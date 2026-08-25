@@ -7,13 +7,22 @@ import {
   BOOKING_KIND_LABEL,
   BOOKING_TYPES,
   BOOKING_TYPE_LABEL,
+  EQUIPMENT_PROVIDERS,
+  EQUIPMENT_PROVIDER_LABEL,
   RECURRENCE_FREQUENCIES,
   RECURRENCE_LABEL,
+  TECHNICIAN_PROVIDERS,
+  TECHNICIAN_PROVIDER_LABEL,
 } from "@/lib/domain";
 import { ScriptUpload } from "@/components/script-upload";
 import { Button, Checkbox, Field, Input, Segmented, Select, Textarea, cx } from "@/components/ui";
 
-import type { BookingFormValues, OptionCategoryChoice, StudioSetChoice } from "./types";
+import type {
+  BookingFormValues,
+  ClientChoice,
+  OptionCategoryChoice,
+  StudioSetChoice,
+} from "./types";
 
 type Patch = (patch: Partial<BookingFormValues>) => void;
 type Errors = Record<string, string>;
@@ -26,21 +35,58 @@ export function StepBooking({
   values,
   patch,
   errors,
+  clients,
 }: {
   values: BookingFormValues;
   patch: Patch;
   errors: Errors;
+  clients: ClientChoice[];
 }) {
+  const chosen = clients.find((c) => c.id === values.clientId);
+  const membersOnly = clients.filter((c) => c.membership);
+
+  /**
+   * Picking a client also settles which membership is being drawn on, so the
+   * two never disagree. Choosing someone without one drops the booking back to
+   * an external rental rather than leaving it in a state the database refuses.
+   */
+  const chooseClient = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    patch({
+      clientId,
+      clientName: client?.name ?? "",
+      clientMembershipId: client?.membership?.id ?? "",
+      kind: values.kind === "membership" && !client?.membership ? "external" : values.kind,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-7">
       <Field label="Booking type">
         <Segmented
           name="Booking type"
           value={values.kind}
-          onChange={(kind) => patch({ kind })}
+          onChange={(kind) => {
+            // A membership booking has to name a member; if the client already
+            // chosen does not hold one, start the choice fresh.
+            if (kind === "membership" && !chosen?.membership) {
+              patch({ kind, clientId: "", clientName: "", clientMembershipId: "" });
+            } else if (kind !== "membership") {
+              patch({ kind, clientMembershipId: "" });
+            } else {
+              patch({ kind });
+            }
+          }}
           options={BOOKING_KINDS.map((k) => ({ value: k, label: BOOKING_KIND_LABEL[k] }))}
         />
       </Field>
+
+      {values.kind === "membership" && membersOnly.length === 0 ? (
+        <p className="rounded-2xl bg-prep-soft px-5 py-4 text-[0.9375rem] text-prep">
+          Nobody holds a membership yet. Start one under Settings → Clients, or book this as an
+          external rental.
+        </p>
+      ) : null}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Title" htmlFor="title" error={errors.title} className="sm:col-span-2">
@@ -53,18 +99,54 @@ export function StepBooking({
           />
         </Field>
 
-        <Field
-          label={values.kind === "external" ? "Client" : "Team or brand"}
-          htmlFor="clientName"
-          error={errors.clientName}
-        >
-          <Input
-            id="clientName"
-            value={values.clientName}
-            placeholder={values.kind === "external" ? "Overtime Media" : "Xpress Entertainment"}
-            onChange={(e) => patch({ clientName: e.target.value })}
-          />
-        </Field>
+        {values.kind === "internal" ? (
+          <Field label="Team or brand" htmlFor="clientName" error={errors.clientName}>
+            <Input
+              id="clientName"
+              value={values.clientName}
+              placeholder="Xpress Entertainment"
+              onChange={(e) => patch({ clientName: e.target.value })}
+            />
+          </Field>
+        ) : (
+          <Field
+            label="Client"
+            htmlFor="clientId"
+            hint={
+              values.kind === "membership"
+                ? "Only clients with a live membership."
+                : "Pick a saved client, or leave it blank and type a name."
+            }
+            error={errors.clientId ?? errors.clientMembershipId}
+          >
+            <Select
+              id="clientId"
+              value={values.clientId}
+              onChange={(e) => chooseClient(e.target.value)}
+            >
+              <option value="">
+                {values.kind === "membership" ? "Choose a member" : "Not a saved client"}
+              </option>
+              {(values.kind === "membership" ? membersOnly : clients).map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                  {client.membership ? ` — ${client.membership.planName}` : ""}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+
+        {values.kind === "external" && !values.clientId ? (
+          <Field label="Client name" htmlFor="clientName" error={errors.clientName}>
+            <Input
+              id="clientName"
+              value={values.clientName}
+              placeholder="Overtime Media"
+              onChange={(e) => patch({ clientName: e.target.value })}
+            />
+          </Field>
+        ) : null}
 
         <Field label="Session" htmlFor="bookingType" error={errors.bookingType}>
           <Select
@@ -79,6 +161,38 @@ export function StepBooking({
             ))}
           </Select>
         </Field>
+      </div>
+
+      <div className="border-t border-line pt-7">
+        <h3 className="eyebrow text-muted">Crew and gear</h3>
+        <p className="mt-2 max-w-prose text-sm text-muted">
+          Who is running the session and whose equipment is in the room. This changes how the room
+          is prepared, never what is charged — ours is included in a rental either way.
+        </p>
+        <div className="mt-4 grid gap-6 sm:grid-cols-2">
+          <Field label="Technician">
+            <Segmented
+              name="Technician"
+              value={values.technicianProvider}
+              onChange={(technicianProvider) => patch({ technicianProvider })}
+              options={TECHNICIAN_PROVIDERS.map((p) => ({
+                value: p,
+                label: TECHNICIAN_PROVIDER_LABEL[p],
+              }))}
+            />
+          </Field>
+          <Field label="Equipment">
+            <Segmented
+              name="Equipment"
+              value={values.equipmentProvider}
+              onChange={(equipmentProvider) => patch({ equipmentProvider })}
+              options={EQUIPMENT_PROVIDERS.map((p) => ({
+                value: p,
+                label: EQUIPMENT_PROVIDER_LABEL[p],
+              }))}
+            />
+          </Field>
+        </div>
       </div>
 
       <div className="border-t border-line pt-7">

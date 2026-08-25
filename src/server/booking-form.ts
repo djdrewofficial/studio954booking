@@ -1,23 +1,35 @@
 import "server-only";
 
-import type { BookingCatalogue, BookingFormValues } from "@/components/booking-form/types";
+import type {
+  BookingCatalogue,
+  BookingFormValues,
+  ClientChoice,
+} from "@/components/booking-form/types";
 import type { SessionUser } from "@/lib/auth";
-import type { BookingKind, BookingType } from "@/lib/domain";
+import type {
+  BookingKind,
+  BookingType,
+  EquipmentProvider,
+  TechnicianProvider,
+} from "@/lib/domain";
 import { ceilToQuarterHour, dayKey, timeValue } from "@/lib/time";
 import { getBookingDetail, getDuplicateTemplate } from "@/server/bookings";
+import { listClientsWithMembership } from "@/server/clients";
 import { getOptionCatalogue, listStudioSets } from "@/server/sets";
 import { defaultBuffers, getStudioSettings } from "@/server/settings";
 
 /** Everything the stepped form needs to render, in one round trip. */
 export async function loadBookingCatalogue(): Promise<BookingCatalogue> {
-  const [settings, sets, categories] = await Promise.all([
+  const [settings, sets, categories, clients] = await Promise.all([
     getStudioSettings(),
     listStudioSets(),
     getOptionCatalogue(),
+    listClientChoices(),
   ]);
 
   return {
     timezone: settings.timezone,
+    clients,
     sets: sets.map((s) => ({
       id: s.id,
       name: s.name,
@@ -41,9 +53,26 @@ export async function loadBookingCatalogue(): Promise<BookingCatalogue> {
     })),
     defaults: {
       internal: defaultBuffers(settings, "internal"),
+      membership: defaultBuffers(settings, "membership"),
       external: defaultBuffers(settings, "external"),
     },
   };
+}
+
+/**
+ * The clients the form can pick from, each carrying their live membership so
+ * choosing a client is enough to know whether a membership booking is possible.
+ */
+async function listClientChoices(): Promise<ClientChoice[]> {
+  const rows = await listClientsWithMembership();
+
+  return rows.map((row) => ({
+    id: row.client.id,
+    name: row.client.name,
+    membership: row.membership
+      ? { id: row.membership.id, planName: row.planName ?? "Membership" }
+      : null,
+  }));
 }
 
 function addMinutesToClock(time: string, minutes: number): string {
@@ -73,6 +102,12 @@ export async function newBookingDefaults(
     kind: "internal",
     bookingType: "podcast",
     clientName: "",
+    clientId: "",
+    clientMembershipId: "",
+    technicianProvider: "none",
+    equipmentProvider: "studio",
+    priceCents: 0,
+    priceManual: false,
     date,
     startTime,
     endTime: addMinutesToClock(startTime, 120),
@@ -103,6 +138,10 @@ export async function newBookingDefaults(
     kind: template.kind,
     bookingType: template.bookingType,
     clientName: template.clientName ?? "",
+    clientId: template.clientId ?? "",
+    clientMembershipId: template.clientMembershipId ?? "",
+    technicianProvider: template.technicianProvider as TechnicianProvider,
+    equipmentProvider: template.equipmentProvider as EquipmentProvider,
     endTime: addMinutesToClock(startTime, template.durationMinutes),
     setupMinutes: template.setupMinutes,
     resetMinutes: template.resetMinutes,
@@ -134,6 +173,12 @@ export async function bookingToFormValues(id: string): Promise<BookingFormValues
     kind: detail.kind as BookingKind,
     bookingType: detail.bookingType as BookingType,
     clientName: detail.clientName ?? "",
+    clientId: detail.clientId ?? "",
+    clientMembershipId: detail.clientMembershipId ?? "",
+    technicianProvider: detail.technicianProvider as TechnicianProvider,
+    equipmentProvider: detail.equipmentProvider as EquipmentProvider,
+    priceCents: detail.priceCents,
+    priceManual: detail.priceManual,
     date: dayKey(detail.startsAt, tz),
     startTime: timeValue(detail.startsAt, tz),
     endTime: timeValue(detail.endsAt, tz),

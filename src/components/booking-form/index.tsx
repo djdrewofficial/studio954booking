@@ -7,8 +7,11 @@ import { useToast } from "@/components/toast";
 import { Button, cx } from "@/components/ui";
 import {
   checkConflictsAction,
+  checkMembershipAction,
   createBookingAction,
+  quotePreviewAction,
   updateBookingAction,
+  type AllowanceSummary,
   type ConflictSummary,
 } from "@/server/actions/bookings";
 
@@ -37,6 +40,15 @@ export function BookingForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [conflicts, setConflicts] = useState<ConflictSummary[]>([]);
   const [checking, setChecking] = useState(false);
+  const [allowance, setAllowance] = useState<{
+    covered: boolean;
+    reason: string | null;
+    lines: AllowanceSummary[];
+  } | null>(null);
+  const [quote, setQuote] = useState<{
+    totalCents: number;
+    lines: { label: string; detail: string | null; cents: number }[];
+  } | null>(null);
   const [saving, startSaving] = useTransition();
   const [dirty, setDirty] = useState(false);
   // Once someone edits a buffer we stop overwriting it when the kind changes.
@@ -122,6 +134,61 @@ export function BookingForm({
     };
   }, [timesValid, date, startTime, endTime, setupMinutes, resetMinutes, bookingId]);
 
+  /* ---- What the membership has left ------------------------------------- */
+
+  const { kind, bookingType, clientMembershipId } = values;
+
+  // Same approach as the conflict check above: when the booking is not a
+  // membership the stale result is simply not shown, rather than cleared.
+  const showAllowance = kind === "membership" && Boolean(clientMembershipId) && timesValid;
+
+  useEffect(() => {
+    if (!showAllowance) return;
+
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      const result = await checkMembershipAction({
+        clientMembershipId,
+        bookingType,
+        date,
+        startTime,
+        endTime,
+        excludeBookingId: bookingId,
+      });
+      if (!cancelled) setAllowance(result);
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [showAllowance, clientMembershipId, bookingType, date, startTime, endTime, bookingId]);
+
+  /* ---- What an external rental comes to --------------------------------- */
+
+  const showQuote = kind === "external" && timesValid;
+
+  useEffect(() => {
+    if (!showQuote) return;
+
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      const result = await quotePreviewAction({
+        kind: "external",
+        bookingType,
+        date,
+        startTime,
+        endTime,
+      });
+      if (!cancelled) setQuote(result.billable ? result : null);
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [showQuote, bookingType, date, startTime, endTime]);
+
   /* ---- Unsaved changes -------------------------------------------------- */
 
   useEffect(() => {
@@ -140,6 +207,8 @@ export function BookingForm({
     const payload = {
       ...values,
       clientName: values.clientName || undefined,
+      clientId: values.clientId || undefined,
+      clientMembershipId: values.clientMembershipId || undefined,
       studioSetId: values.studioSetId || undefined,
       organizerPhone: values.organizerPhone || undefined,
       notes: values.notes || undefined,
@@ -217,7 +286,14 @@ export function BookingForm({
         </ol>
 
         <div className="py-8">
-          {step === 0 ? <StepBooking values={values} patch={patch} errors={errors} /> : null}
+          {step === 0 ? (
+            <StepBooking
+              values={values}
+              patch={patch}
+              errors={errors}
+              clients={catalogue.clients}
+            />
+          ) : null}
           {step === 1 ? <StepSet sets={catalogue.sets} values={values} patch={patch} /> : null}
           {step === 2 ? (
             <StepCustomize
@@ -263,6 +339,8 @@ export function BookingForm({
 
       <BookingSummary
         values={values}
+        allowance={showAllowance ? allowance : null}
+        quote={showQuote ? quote : null}
         sets={catalogue.sets}
         categories={visibleCategories}
         conflicts={timesValid ? conflicts : []}

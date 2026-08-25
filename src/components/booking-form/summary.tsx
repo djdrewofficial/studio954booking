@@ -5,8 +5,9 @@ import Link from "next/link";
 import { SetupRecipe } from "@/components/setup-recipe";
 import { cx } from "@/components/ui";
 import { RECURRENCE_LABEL } from "@/lib/domain";
+import { formatMoney } from "@/lib/pricing";
 import { formatDuration } from "@/lib/time";
-import type { ConflictSummary } from "@/server/actions/bookings";
+import type { AllowanceSummary, ConflictSummary } from "@/server/actions/bookings";
 
 import type { BookingFormValues, OptionCategoryChoice, StudioSetChoice } from "./types";
 
@@ -50,6 +51,8 @@ export function BookingSummary({
   conflicts,
   checking,
   occurrenceCount,
+  allowance,
+  quote,
 }: {
   values: BookingFormValues;
   sets: StudioSetChoice[];
@@ -57,6 +60,10 @@ export function BookingSummary({
   conflicts: ConflictSummary[];
   checking: boolean;
   occurrenceCount: number;
+  /** Present only for a membership booking with a member chosen. */
+  allowance: { covered: boolean; reason: string | null; lines: AllowanceSummary[] } | null;
+  /** Present only for an external rental. */
+  quote: { totalCents: number; lines: { label: string; detail: string | null; cents: number }[] } | null;
 }) {
   const start = toMinutes(values.startTime);
   const end = toMinutes(values.endTime);
@@ -109,6 +116,61 @@ export function BookingSummary({
           Pick a start and end time to see the studio hold.
         </p>
       )}
+
+      {/* What the membership has left, or what the rental comes to. Both sit
+          above availability because they change what the studio says on the
+          phone, not just whether the room is free. */}
+      {allowance ? (
+        <div className="mt-5" aria-live="polite">
+          <h2 className="eyebrow text-muted">Membership</h2>
+          <ul className="mt-3 flex flex-col gap-1.5">
+            {allowance.lines.map((line, i) => (
+              <li
+                key={i}
+                className={cx(
+                  "flex items-baseline justify-between gap-3 rounded-xl px-3 py-2 text-sm",
+                  line.over ? "bg-danger-soft text-danger" : "bg-sand",
+                )}
+              >
+                <span className="font-semibold">{line.label}</span>
+                <span className={line.over ? "font-semibold" : "text-muted"}>{line.detail}</span>
+              </li>
+            ))}
+          </ul>
+          {allowance.reason ? (
+            <p className="mt-3 border-l-2 border-prep bg-white px-4 py-3 text-sm text-prep">
+              {allowance.reason} You can still book it — settle the extra separately.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {quote && quote.lines.length > 0 ? (
+        <div className="mt-5" aria-live="polite">
+          <h2 className="eyebrow text-muted">Price</h2>
+          <dl className="mt-3 divide-y divide-line border-y border-line">
+            {quote.lines.map((line, i) => (
+              <SummaryRow
+                key={i}
+                label={line.detail ? `${line.label} · ${line.detail}` : line.label}
+                value={formatMoney(line.cents)}
+                muted
+              />
+            ))}
+            <SummaryRow label="Total" value={formatMoney(quote.totalCents)} emphasis />
+          </dl>
+          {occurrenceCount > 1 ? (
+            <p className="mt-2 text-sm text-muted">Per session, {occurrenceCount} in this repeat.</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {quote && quote.lines.length === 0 ? (
+        <p className="mt-5 text-sm text-muted">
+          No rate is set for this appointment yet, so it would be booked at no charge. Add one under
+          Settings → Rates.
+        </p>
+      ) : null}
 
       {/* Availability — the one thing that must never be a surprise on save. */}
       <div className="mt-5" aria-live="polite">

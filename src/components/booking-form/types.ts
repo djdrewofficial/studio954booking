@@ -1,4 +1,10 @@
-import type { BookingKind, BookingType, RecurrenceFrequency } from "@/lib/domain";
+import type {
+  BookingKind,
+  BookingType,
+  EquipmentProvider,
+  RecurrenceFrequency,
+  TechnicianProvider,
+} from "@/lib/domain";
 
 /** Everything the form holds, kept as plain values so it round-trips cleanly. */
 export type BookingFormValues = {
@@ -6,6 +12,17 @@ export type BookingFormValues = {
   kind: BookingKind;
   bookingType: BookingType;
   clientName: string;
+  /** Empty when the booking is not tied to a client record. */
+  clientId: string;
+  /** The membership being drawn down; required when kind is "membership". */
+  clientMembershipId: string;
+
+  technicianProvider: TechnicianProvider;
+  equipmentProvider: EquipmentProvider;
+
+  /** Only sent when priceManual is on; otherwise the server quotes it. */
+  priceCents: number;
+  priceManual: boolean;
 
   date: string;
   startTime: string;
@@ -65,13 +82,18 @@ export type StudioSetChoice = {
   imageUrl: string | null;
 };
 
+/** A client the form can pick, with their live membership if they hold one. */
+export type ClientChoice = {
+  id: string;
+  name: string;
+  membership: { id: string; planName: string } | null;
+};
+
 export type BookingCatalogue = {
   sets: StudioSetChoice[];
   categories: OptionCategoryChoice[];
-  defaults: {
-    internal: { setupMinutes: number; resetMinutes: number };
-    external: { setupMinutes: number; resetMinutes: number };
-  };
+  defaults: Record<BookingKind, { setupMinutes: number; resetMinutes: number }>;
+  clients: ClientChoice[];
   timezone: string;
 };
 

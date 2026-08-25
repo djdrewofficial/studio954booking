@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
-import type { BookingStatus } from "@/lib/domain";
+import type { BookingKind, BookingStatus, BookingType } from "@/lib/domain";
 import { BOOKING_STATUSES } from "@/lib/domain";
 import { bookingSchema, fieldErrors } from "@/lib/validation";
 import {
@@ -219,4 +219,98 @@ export async function sendConfirmationAction(bookingId: string): Promise<ActionR
   return result.sent
     ? { ok: true, bookingId }
     : { ok: false, message: result.reason ?? "The confirmation could not be sent." };
+}
+
+/* ---------------------------------------------------------------------------
+ * Live feedback while the form is open
+ * ------------------------------------------------------------------------ */
+
+export type AllowanceSummary = {
+  label: string;
+  detail: string;
+  over: boolean;
+};
+
+/**
+ * What a membership has left if this booking were added, and a plain sentence
+ * when it would not be covered.
+ *
+ * Nothing blocks an over-allowance booking — the studio may well want the work
+ * and settle up afterwards — but the form says so before anyone confirms.
+ */
+export async function checkMembershipAction(input: {
+  clientMembershipId: string;
+  bookingType: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  excludeBookingId?: string;
+}): Promise<{ covered: boolean; reason: string | null; lines: AllowanceSummary[] }> {
+  await requireUser();
+  const settings = await getStudioSettings();
+
+  const { instantFromLocalParts, durationMinutes } = await import("@/lib/time");
+  const { checkMembershipCoverage } = await import("@/server/clients");
+  const { describeRemaining } = await import("@/lib/membership");
+
+  let minutes: number;
+  try {
+    const startsAt = instantFromLocalParts(input.date, input.startTime, settings.timezone);
+    const endsAt = instantFromLocalParts(input.date, input.endTime, settings.timezone);
+    if (endsAt <= startsAt) return { covered: true, reason: null, lines: [] };
+    minutes = durationMinutes(startsAt, endsAt);
+  } catch {
+    return { covered: true, reason: null, lines: [] };
+  }
+
+  const result = await checkMembershipCoverage(
+    input.clientMembershipId,
+    { bookingType: input.bookingType as BookingType, minutes },
+    new Date(),
+    settings.timezone,
+    input.excludeBookingId,
+  );
+
+  return {
+    covered: result.covered,
+    reason: result.reason,
+    lines: result.lines.map((line) => ({
+      label: line.label,
+      detail: describeRemaining(line),
+      over: line.over > 0,
+    })),
+  };
+}
+
+/** What an external booking of this shape would cost, for the live summary. */
+export async function quotePreviewAction(input: {
+  kind: string;
+  bookingType: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}): Promise<{ billable: boolean; totalCents: number; lines: { label: string; detail: string | null; cents: number }[] }> {
+  await requireUser();
+  const settings = await getStudioSettings();
+
+  const { instantFromLocalParts, durationMinutes } = await import("@/lib/time");
+  const { quoteBooking } = await import("@/server/rates");
+
+  let minutes: number;
+  try {
+    const startsAt = instantFromLocalParts(input.date, input.startTime, settings.timezone);
+    const endsAt = instantFromLocalParts(input.date, input.endTime, settings.timezone);
+    if (endsAt <= startsAt) return { billable: false, totalCents: 0, lines: [] };
+    minutes = durationMinutes(startsAt, endsAt);
+  } catch {
+    return { billable: false, totalCents: 0, lines: [] };
+  }
+
+  const quote = await quoteBooking({
+    kind: input.kind as BookingKind,
+    bookingType: input.bookingType as BookingType,
+    minutes,
+  });
+
+  return { billable: quote.billable, totalCents: quote.totalCents, lines: quote.lines };
 }

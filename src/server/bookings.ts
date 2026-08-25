@@ -25,6 +25,7 @@ import {
   bookingFiles,
   bookingSetOptions,
   bookings,
+  clients,
   notificationLogs,
   setOptionCategories,
   setOptions,
@@ -33,6 +34,7 @@ import {
 import type { BookingStatus } from "@/lib/domain";
 import type { BookingInput } from "@/lib/validation";
 import { addDays, instantFromLocalParts } from "@/lib/time";
+import { quoteBooking } from "@/server/rates";
 
 /* ---------------------------------------------------------------------------
  * Read models
@@ -374,6 +376,52 @@ function isExclusionViolation(error: unknown): boolean {
 
 type WriteContext = { timezone: string; userId: string | null };
 
+/**
+ * The fields that describe who the booking is for, who is running it, and what
+ * it costs.
+ *
+ * The price is quoted here rather than trusted from the form, so a stale figure
+ * in a long-open browser tab can never become what a client is charged. A
+ * hand-typed price is the one exception, and it is recorded as such.
+ *
+ * `clientName` is kept in step with the chosen client so every screen that
+ * already reads the plain name keeps working.
+ */
+async function bookingExtras(input: BookingInput, sessionMinutes: number) {
+  let clientName = input.clientName ?? null;
+
+  if (input.clientId) {
+    const rows = await db
+      .select({ name: clients.name })
+      .from(clients)
+      .where(eq(clients.id, input.clientId))
+      .limit(1);
+    if (rows[0]) clientName = rows[0].name;
+  }
+
+  const priceCents = input.priceManual
+    ? (input.priceCents ?? 0)
+    : (
+        await quoteBooking({
+          kind: input.kind,
+          bookingType: input.bookingType,
+          minutes: sessionMinutes,
+        })
+      ).totalCents;
+
+  return {
+    clientName,
+    clientId: input.clientId ?? null,
+    // Only a membership booking draws on a membership; switching a booking to
+    // internal or external must let the allowance go.
+    clientMembershipId: input.kind === "membership" ? (input.clientMembershipId ?? null) : null,
+    technicianProvider: input.technicianProvider,
+    equipmentProvider: input.equipmentProvider,
+    priceCents,
+    priceManual: input.priceManual,
+  };
+}
+
 export async function createBookings(
   input: BookingInput,
   ctx: WriteContext,
@@ -388,6 +436,11 @@ export async function createBookings(
   if (conflicts.length) throw new BookingConflictError(conflicts);
 
   const recurrenceGroupId = windows.length > 1 ? crypto.randomUUID() : null;
+  const first = windows[0];
+  const extras = await bookingExtras(
+    input,
+    Math.round((first.endsAt.getTime() - first.startsAt.getTime()) / 60_000),
+  );
 
   try {
     return await db.transaction(async (tx) => {
@@ -400,7 +453,7 @@ export async function createBookings(
             title: input.title,
             kind: input.kind,
             bookingType: input.bookingType,
-            clientName: input.clientName ?? null,
+            ...extras,
             startsAt: w.startsAt,
             endsAt: w.endsAt,
             setupMinutes: input.setupMinutes,
@@ -445,6 +498,11 @@ export async function updateBooking(
   const conflicts = await findConflicts([window], [id]);
   if (conflicts.length) throw new BookingConflictError(conflicts);
 
+  const extras = await bookingExtras(
+    input,
+    Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
+  );
+
   try {
     await db.transaction(async (tx) => {
       await tx
@@ -453,7 +511,7 @@ export async function updateBooking(
           title: input.title,
           kind: input.kind,
           bookingType: input.bookingType,
-          clientName: input.clientName ?? null,
+          ...extras,
           startsAt,
           endsAt,
           setupMinutes: input.setupMinutes,
@@ -538,6 +596,12 @@ export async function getDuplicateTemplate(id: string) {
     kind: detail.kind as BookingInput["kind"],
     bookingType: detail.bookingType as BookingInput["bookingType"],
     clientName: detail.clientName ?? undefined,
+    // A duplicate stays with the same client and keeps drawing on the same
+    // membership — a repeat of a member's podcast is still their podcast.
+    clientId: detail.clientId ?? undefined,
+    clientMembershipId: detail.clientMembershipId ?? undefined,
+    technicianProvider: detail.technicianProvider,
+    equipmentProvider: detail.equipmentProvider,
     setupMinutes: detail.setupMinutes,
     resetMinutes: detail.resetMinutes,
     studioSetId: detail.studioSetId ?? undefined,
