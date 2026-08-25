@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   index,
   integer,
   pgTable,
@@ -160,6 +161,102 @@ export const addons = pgTable("addons", {
 });
 
 /* ---------------------------------------------------------------------------
+ * Clients and memberships
+ *
+ * A booking used to carry a free-text client name, which is enough to run a
+ * schedule but cannot own a membership or a balance. `clients` is the durable
+ * record every recurring relationship hangs off.
+ * ------------------------------------------------------------------------ */
+
+export const clients = pgTable(
+  "clients",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** The business, or the person when they book as themselves. */
+    name: text("name").notNull(),
+    contactName: text("contact_name"),
+    email: text("email"),
+    phone: text("phone"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("clients_name_idx").on(t.name)],
+);
+
+/** A sellable membership. What it includes lives in the entitlement lines. */
+export const membershipPlans = pgTable("membership_plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  /** Billed monthly. */
+  priceCents: integer("price_cents").notNull().default(0),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * One line of what a plan includes, so a single plan can read
+ * "10 studio hours + 3 podcasts + 2 content days".
+ *
+ * `amount` is minutes for a studio-time line and a plain count for an
+ * appointment line. An appointment line with no bookingType means any type.
+ */
+export const membershipPlanEntitlements = pgTable(
+  "membership_plan_entitlements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => membershipPlans.id, { onDelete: "cascade" }),
+    /** studio_hours | appointment_count */
+    entitlementKind: text("entitlement_kind").notNull(),
+    bookingType: text("booking_type"),
+    amount: integer("amount").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("membership_plan_entitlements_plan_id_idx").on(t.planId)],
+);
+
+/**
+ * A client's subscription. `startedOn` doubles as the billing anchor: the day
+ * of the month the allowance refills. Allowances do not roll over, so there is
+ * no balance column — usage is derived by counting the bookings attached to
+ * this membership inside the current period, which means cancelling a booking
+ * returns the allowance with nothing to reconcile.
+ */
+export const clientMemberships = pgTable(
+  "client_memberships",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => membershipPlans.id, { onDelete: "restrict" }),
+    /** active | paused | cancelled — only one may be active per client. */
+    status: text("status").notNull().default("active"),
+    startedOn: date("started_on").notNull(),
+    endedOn: date("ended_on"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("client_memberships_client_id_idx").on(t.clientId)],
+);
+
+/** What an external client pays for one session, before add-ons. */
+export const bookingTypeRates = pgTable("booking_type_rates", {
+  bookingType: text("booking_type").primaryKey(),
+  baseCents: integer("base_cents").notNull().default(0),
+  hourlyCents: integer("hourly_cents").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ---------------------------------------------------------------------------
  * Bookings
  * ------------------------------------------------------------------------ */
 
@@ -196,6 +293,25 @@ export const bookings = pgTable(
     /** Shared by every occurrence generated from one recurrence rule. */
     recurrenceGroupId: uuid("recurrence_group_id"),
 
+    /** The durable client this booking belongs to, when there is one. */
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+    /**
+     * The membership this booking draws down. Required when kind is
+     * "membership" — the database enforces it.
+     */
+    clientMembershipId: uuid("client_membership_id"),
+    /** studio | client | none — whose technician runs the session. */
+    technicianProvider: text("technician_provider").notNull().default("none"),
+    /** studio | client — whose equipment is used. */
+    equipmentProvider: text("equipment_provider").notNull().default("studio"),
+    /**
+     * What this booking costs, captured at booking time so editing the rate
+     * card never rewrites an existing quote.
+     */
+    priceCents: integer("price_cents").notNull().default(0),
+    /** True once someone types a price by hand; the rate card stops overwriting. */
+    priceManual: boolean("price_manual").notNull().default(false),
+
     googleEventId: text("google_event_id"),
     googleSyncedAt: timestamp("google_synced_at", { withTimezone: true }),
 
@@ -218,6 +334,8 @@ export const bookings = pgTable(
     index("bookings_starts_at_idx").on(t.startsAt),
     index("bookings_status_idx").on(t.status),
     index("bookings_recurrence_group_idx").on(t.recurrenceGroupId),
+    index("bookings_client_id_idx").on(t.clientId),
+    index("bookings_client_membership_idx").on(t.clientMembershipId),
   ],
 );
 

@@ -106,6 +106,7 @@ const CONTROL =
 
 export function Field({
   label,
+  labelHidden,
   hint,
   error,
   errorSlot,
@@ -114,6 +115,12 @@ export function Field({
   className,
 }: {
   label: string;
+  /**
+   * Hides the label visually but keeps it for screen readers. For grids like
+   * the rate card, where a column heading already says what the field is and
+   * repeating it on every row would only add noise.
+   */
+  labelHidden?: boolean;
   hint?: string;
   /** A message already in hand — used by the fully client-side forms. */
   error?: string;
@@ -128,7 +135,7 @@ export function Field({
 }) {
   return (
     <div className={cx("flex flex-col gap-2", className)}>
-      <label htmlFor={htmlFor} className="label text-ink">
+      <label htmlFor={htmlFor} className={cx("label text-ink", labelHidden && "sr-only")}>
         {label}
       </label>
       {children}

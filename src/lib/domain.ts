@@ -4,18 +4,25 @@
  * constraints can never drift apart.
  */
 
-export const BOOKING_KINDS = ["internal", "external"] as const;
+export const BOOKING_KINDS = ["internal", "membership", "external"] as const;
 export type BookingKind = (typeof BOOKING_KINDS)[number];
 
 export const BOOKING_KIND_LABEL: Record<BookingKind, string> = {
   internal: "Internal",
+  membership: "Membership",
   external: "External Rental",
 };
+
+/** Only these kinds are ever invoiced; internal work is the studio's own time. */
+export function isBillableKind(kind: BookingKind): boolean {
+  return kind === "external";
+}
 
 export const BOOKING_TYPES = [
   "podcast",
   "interview",
   "social_content",
+  "content_day",
   "photoshoot",
   "product_shoot",
   "livestream",
@@ -27,10 +34,56 @@ export const BOOKING_TYPE_LABEL: Record<BookingType, string> = {
   podcast: "Podcast",
   interview: "Interview",
   social_content: "Social Content",
+  content_day: "Content Shoot Day",
   photoshoot: "Photoshoot",
   product_shoot: "Product Shoot",
   livestream: "Livestream",
   other: "Other",
+};
+
+/* ---------------------------------------------------------------------------
+ * Who brings the crew and the gear
+ *
+ * Recorded on every booking because it changes both what the room needs and,
+ * for an external client, what the session costs.
+ * ------------------------------------------------------------------------ */
+
+export const TECHNICIAN_PROVIDERS = ["studio", "client", "none"] as const;
+export type TechnicianProvider = (typeof TECHNICIAN_PROVIDERS)[number];
+
+export const TECHNICIAN_PROVIDER_LABEL: Record<TechnicianProvider, string> = {
+  studio: "Our technician",
+  client: "Their technician",
+  none: "No technician",
+};
+
+export const EQUIPMENT_PROVIDERS = ["studio", "client"] as const;
+export type EquipmentProvider = (typeof EQUIPMENT_PROVIDERS)[number];
+
+export const EQUIPMENT_PROVIDER_LABEL: Record<EquipmentProvider, string> = {
+  studio: "Our equipment",
+  client: "Their equipment",
+};
+
+/* ---------------------------------------------------------------------------
+ * Memberships
+ * ------------------------------------------------------------------------ */
+
+export const ENTITLEMENT_KINDS = ["studio_hours", "appointment_count"] as const;
+export type EntitlementKind = (typeof ENTITLEMENT_KINDS)[number];
+
+export const ENTITLEMENT_KIND_LABEL: Record<EntitlementKind, string> = {
+  studio_hours: "Studio hours",
+  appointment_count: "Appointments",
+};
+
+export const MEMBERSHIP_STATUSES = ["active", "paused", "cancelled"] as const;
+export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
+
+export const MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
+  active: "Active",
+  paused: "Paused",
+  cancelled: "Cancelled",
 };
 
 /* ---------------------------------------------------------------------------

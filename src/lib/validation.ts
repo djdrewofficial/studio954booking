@@ -4,7 +4,11 @@ import {
   BOOKING_KINDS,
   BOOKING_STATUSES,
   BOOKING_TYPES,
+  ENTITLEMENT_KINDS,
+  EQUIPMENT_PROVIDERS,
+  MEMBERSHIP_STATUSES,
   RECURRENCE_FREQUENCIES,
+  TECHNICIAN_PROVIDERS,
   USER_ROLES,
 } from "./domain";
 
@@ -76,6 +80,21 @@ export const bookingSchema = z
     bookingType: z.enum(BOOKING_TYPES),
     clientName: optionalText,
 
+    /** The durable client record, when this booking belongs to one. */
+    clientId: z.uuid().optional().or(z.literal("").transform(() => undefined)),
+    /** Which membership the session draws down. Required when kind is membership. */
+    clientMembershipId: z.uuid().optional().or(z.literal("").transform(() => undefined)),
+
+    technicianProvider: z.enum(TECHNICIAN_PROVIDERS).default("none"),
+    equipmentProvider: z.enum(EQUIPMENT_PROVIDERS).default("studio"),
+
+    /**
+     * Only read when priceManual is set. Otherwise the server quotes from the
+     * rate card, so a stale client-side figure can never become the price.
+     */
+    priceCents: z.coerce.number().int().min(0).max(1_000_000_00).optional(),
+    priceManual: z.boolean().default(false),
+
     date: isoDate,
     startTime: clockTime,
     endTime: clockTime,
@@ -124,6 +143,16 @@ export const bookingSchema = z
   .refine((v) => v.recurrence === "none" || Boolean(v.recurrenceUntil), {
     message: "Choose the date the repeat should stop",
     path: ["recurrenceUntil"],
+  })
+  // Mirrors the database constraint, so the form explains it rather than
+  // letting the insert fail.
+  .refine((v) => v.kind !== "membership" || Boolean(v.clientMembershipId), {
+    message: "Choose the client whose membership covers this",
+    path: ["clientMembershipId"],
+  })
+  .refine((v) => v.kind !== "membership" || Boolean(v.clientId), {
+    message: "A membership booking needs a client",
+    path: ["clientId"],
   });
 export type BookingInput = z.infer<typeof bookingSchema>;
 
@@ -216,6 +245,77 @@ export const addonSchema = z.object({
   description: optionalText,
   priceCents: z.coerce.number().int().min(0).max(10_000_00),
   isActive: z.boolean().default(true),
+});
+
+/* ---------------------------------------------------------------------------
+ * Clients, memberships and the rate card
+ * ------------------------------------------------------------------------ */
+
+export const clientSchema = z.object({
+  id: z.uuid().optional(),
+  name: shortText("Client name", 160),
+  contactName: optionalText,
+  email: z.union([z.literal(""), z.email("Enter a valid email")]).optional(),
+  phone: optionalText,
+  notes: optionalText,
+  isActive: z.boolean().default(true),
+});
+
+export const membershipPlanSchema = z.object({
+  id: z.uuid().optional(),
+  name: shortText("Plan name", 120),
+  description: optionalText,
+  priceCents: z.coerce.number().int().min(0).max(100_000_00),
+  isActive: z.boolean().default(true),
+});
+
+/**
+ * One line of what a plan includes. Studio time arrives from the form in
+ * hours and is stored in minutes, matching every other duration in the app.
+ */
+export const planEntitlementSchema = z
+  .object({
+    id: z.uuid().optional(),
+    planId: z.uuid(),
+    entitlementKind: z.enum(ENTITLEMENT_KINDS),
+    /** Empty means "any appointment", which is a real choice, not a blank. */
+    bookingType: z.union([z.literal(""), z.enum(BOOKING_TYPES)]).optional(),
+    amount: z.coerce.number().int().positive("Enter how many"),
+  })
+  .refine((v) => v.entitlementKind !== "studio_hours" || !v.bookingType, {
+    message: "Studio time is not tied to one appointment type",
+    path: ["bookingType"],
+  });
+
+export const clientMembershipSchema = z
+  .object({
+    id: z.uuid().optional(),
+    clientId: z.uuid(),
+    planId: z.uuid("Choose a plan"),
+    status: z.enum(MEMBERSHIP_STATUSES).default("active"),
+    startedOn: isoDate,
+    endedOn: z.union([z.literal(""), isoDate]).optional(),
+    notes: optionalText,
+  })
+  .refine((v) => !v.endedOn || v.endedOn >= v.startedOn, {
+    message: "The end date cannot be before the start date",
+    path: ["endedOn"],
+  });
+
+export const bookingTypeRateSchema = z.object({
+  bookingType: z.enum(BOOKING_TYPES),
+  baseCents: z.coerce.number().int().min(0).max(100_000_00),
+  hourlyCents: z.coerce.number().int().min(0).max(100_000_00),
+});
+
+/**
+ * Who is running the session and whose gear is in the room. Recorded on every
+ * booking because it changes how the room is prepared — never what it costs,
+ * since our crew and gear are included in an external rental either way.
+ */
+export const providerSchema = z.object({
+  technicianProvider: z.enum(TECHNICIAN_PROVIDERS).default("none"),
+  equipmentProvider: z.enum(EQUIPMENT_PROVIDERS).default("studio"),
 });
 
 /* ---------------------------------------------------------------------------

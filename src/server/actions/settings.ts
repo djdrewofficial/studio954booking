@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
   addons,
+  bookingTypeRates,
+  clientMemberships,
+  clients,
+  membershipPlanEntitlements,
+  membershipPlans,
   setOptionCategories,
   setOptionSets,
   setOptions,
@@ -14,9 +19,15 @@ import {
   users,
 } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
+import { BOOKING_TYPES } from "@/lib/domain";
 import {
   addonSchema,
+  bookingTypeRateSchema,
+  clientMembershipSchema,
+  clientSchema,
   fieldErrors,
+  membershipPlanSchema,
+  planEntitlementSchema,
   notificationSettingsSchema,
   setOptionCategorySchema,
   setOptionSchema,
@@ -414,4 +425,248 @@ export async function setUserActive(id: string, isActive: boolean): Promise<Sett
   await db.update(users).set({ isActive, updatedAt: new Date() }).where(eq(users.id, id));
   revalidateSettings();
   return { ok: true, message: isActive ? "Account reactivated." : "Account deactivated." };
+}
+
+/* ---------------------------------------------------------------------------
+ * Clients
+ * ------------------------------------------------------------------------ */
+
+function money(formData: FormData, key: string): number {
+  return Math.round(Number(text(formData, key) || 0) * 100);
+}
+
+export async function saveClient(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  await requireAdmin();
+
+  const id = text(formData, "id");
+  const parsed = clientSchema.safeParse({
+    id: id || undefined,
+    name: text(formData, "name"),
+    contactName: text(formData, "contactName"),
+    email: text(formData, "email"),
+    phone: text(formData, "phone"),
+    notes: text(formData, "notes"),
+    isActive: bool(formData, "isActive"),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const values = {
+    name: parsed.data.name,
+    contactName: parsed.data.contactName ?? null,
+    email: parsed.data.email || null,
+    phone: parsed.data.phone ?? null,
+    notes: parsed.data.notes ?? null,
+    isActive: parsed.data.isActive,
+    updatedAt: new Date(),
+  };
+
+  if (parsed.data.id) {
+    await db.update(clients).set(values).where(eq(clients.id, parsed.data.id));
+  } else {
+    await db.insert(clients).values(values);
+  }
+
+  revalidateSettings();
+  revalidatePath("/clients", "layout");
+  return { ok: true, message: "Client saved." };
+}
+
+/* ---------------------------------------------------------------------------
+ * Membership plans and what they include
+ * ------------------------------------------------------------------------ */
+
+export async function saveMembershipPlan(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  await requireAdmin();
+
+  const id = text(formData, "id");
+  const parsed = membershipPlanSchema.safeParse({
+    id: id || undefined,
+    name: text(formData, "name"),
+    description: text(formData, "description"),
+    priceCents: money(formData, "price"),
+    isActive: bool(formData, "isActive"),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const values = {
+    name: parsed.data.name,
+    description: parsed.data.description ?? null,
+    priceCents: parsed.data.priceCents,
+    isActive: parsed.data.isActive,
+  };
+
+  if (parsed.data.id) {
+    await db.update(membershipPlans).set(values).where(eq(membershipPlans.id, parsed.data.id));
+  } else {
+    const [{ next }] = await db
+      .select({ next: sql<number>`coalesce(max(${membershipPlans.sortOrder}), 0) + 1` })
+      .from(membershipPlans);
+    await db.insert(membershipPlans).values({ ...values, sortOrder: next });
+  }
+
+  revalidateSettings();
+  return { ok: true, message: "Plan saved." };
+}
+
+/**
+ * Adds or edits one entitlement line. Studio time is entered in hours and
+ * stored in minutes, so the form reads the way a plan is actually sold.
+ */
+export async function savePlanEntitlement(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  await requireAdmin();
+
+  const id = text(formData, "id");
+  const kind = text(formData, "entitlementKind");
+  const raw = Number(text(formData, "amount") || 0);
+  const parsed = planEntitlementSchema.safeParse({
+    id: id || undefined,
+    planId: text(formData, "planId"),
+    entitlementKind: kind,
+    bookingType: kind === "studio_hours" ? "" : text(formData, "bookingType"),
+    amount: kind === "studio_hours" ? Math.round(raw * 60) : Math.round(raw),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const values = {
+    planId: parsed.data.planId,
+    entitlementKind: parsed.data.entitlementKind,
+    bookingType: parsed.data.bookingType || null,
+    amount: parsed.data.amount,
+  };
+
+  if (parsed.data.id) {
+    await db
+      .update(membershipPlanEntitlements)
+      .set(values)
+      .where(eq(membershipPlanEntitlements.id, parsed.data.id));
+  } else {
+    const [{ next }] = await db
+      .select({ next: sql<number>`coalesce(max(${membershipPlanEntitlements.sortOrder}), 0) + 1` })
+      .from(membershipPlanEntitlements)
+      .where(eq(membershipPlanEntitlements.planId, parsed.data.planId));
+    await db.insert(membershipPlanEntitlements).values({ ...values, sortOrder: next });
+  }
+
+  revalidateSettings();
+  return { ok: true, message: "Plan updated." };
+}
+
+/** Used directly as a form action, so removing a line needs no client component. */
+export async function removePlanEntitlement(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = text(formData, "id");
+  if (!id) return;
+  await db.delete(membershipPlanEntitlements).where(eq(membershipPlanEntitlements.id, id));
+  revalidateSettings();
+}
+
+/* ---------------------------------------------------------------------------
+ * A client's membership
+ * ------------------------------------------------------------------------ */
+
+export async function saveClientMembership(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  await requireAdmin();
+
+  const id = text(formData, "id");
+  const parsed = clientMembershipSchema.safeParse({
+    id: id || undefined,
+    clientId: text(formData, "clientId"),
+    planId: text(formData, "planId"),
+    status: text(formData, "status") || "active",
+    startedOn: text(formData, "startedOn"),
+    endedOn: text(formData, "endedOn"),
+    notes: text(formData, "notes"),
+  });
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
+
+  const values = {
+    clientId: parsed.data.clientId,
+    planId: parsed.data.planId,
+    status: parsed.data.status,
+    startedOn: parsed.data.startedOn,
+    endedOn: parsed.data.endedOn || null,
+    notes: parsed.data.notes ?? null,
+    updatedAt: new Date(),
+  };
+
+  try {
+    if (parsed.data.id) {
+      await db.update(clientMemberships).set(values).where(eq(clientMemberships.id, parsed.data.id));
+    } else {
+      await db.insert(clientMemberships).values(values);
+    }
+  } catch (error) {
+    // The database allows only one active membership per client.
+    if (isUniqueViolation(error)) {
+      return {
+        ok: false,
+        message: "That client already has an active membership. End it before starting another.",
+      };
+    }
+    throw error;
+  }
+
+  revalidateSettings();
+  revalidatePath("/clients", "layout");
+  return { ok: true, message: "Membership saved." };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
+
+/* ---------------------------------------------------------------------------
+ * The rate card
+ * ------------------------------------------------------------------------ */
+
+/** Saves the whole card in one submit, because that is how it is read. */
+export async function saveRates(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
+  await requireAdmin();
+
+  const rows = [];
+  for (const type of BOOKING_TYPES) {
+    const parsed = bookingTypeRateSchema.safeParse({
+      bookingType: type,
+      baseCents: money(formData, `base.${type}`),
+      hourlyCents: money(formData, `hourly.${type}`),
+    });
+    if (!parsed.success) {
+      const errors = fieldErrors(parsed.error);
+      return {
+        errors: {
+          [`base.${type}`]: errors.baseCents ?? "",
+          [`hourly.${type}`]: errors.hourlyCents ?? "",
+        },
+      };
+    }
+    rows.push(parsed.data);
+  }
+
+  for (const row of rows) {
+    await db
+      .insert(bookingTypeRates)
+      .values({ ...row, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: bookingTypeRates.bookingType,
+        set: { baseCents: row.baseCents, hourlyCents: row.hourlyCents, updatedAt: new Date() },
+      });
+  }
+
+  revalidateSettings();
+  return { ok: true, message: "Rates saved." };
 }

@@ -52,9 +52,11 @@ export async function getTimezone(): Promise<string> {
 
 /** Internal shoots turn the room around faster than paid rentals. */
 export function defaultBuffers(settings: StudioSettings, kind: BookingKind) {
-  return kind === "external"
-    ? { setupMinutes: settings.externalSetupMinutes, resetMinutes: settings.externalResetMinutes }
-    : { setupMinutes: settings.internalSetupMinutes, resetMinutes: settings.internalResetMinutes };
+  // Members are outside clients too — they arrive with their own people and
+  // gear, so they get the rental turnaround rather than the internal one.
+  return kind === "internal"
+    ? { setupMinutes: settings.internalSetupMinutes, resetMinutes: settings.internalResetMinutes }
+    : { setupMinutes: settings.externalSetupMinutes, resetMinutes: settings.externalResetMinutes };
 }
 
 export function formatStudioAddress(settings: StudioSettings): string | null {
