@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Netlify's local folder holds build artefacts and vendored plugins —
+    // ~85MB of files that will exhaust the linter's heap if it walks them.
+    ".netlify/**",
   ]),
 ]);
 
