@@ -134,6 +134,8 @@ body {
 
 /** Times and counts: same family, tabular figures so columns line up. */
 @utility timecode {
+  /* <code> would otherwise fall through to the browser's monospace stack. */
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: -0.01em;
