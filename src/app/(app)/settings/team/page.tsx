@@ -4,7 +4,13 @@ import { FormError, SettingsForm } from "@/components/settings/form";
 import { UserActiveToggle } from "@/components/settings/toggles";
 import { Field, Input, Select } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { USER_ROLES, USER_ROLE_LABEL, canManageSettings, type UserRole } from "@/lib/domain";
+import {
+  USER_ROLES,
+  USER_ROLE_DESCRIPTION,
+  USER_ROLE_LABEL,
+  canManageSettings,
+  type UserRole,
+} from "@/lib/domain";
 import { saveUser } from "@/server/actions/settings";
 import { listUsers } from "@/server/users";
 
@@ -96,7 +102,7 @@ function UserFields({
         <Input name="email" type="email" defaultValue={user?.email ?? ""} required />
       </Field>
       <Field label="Role" errorSlot={<FormError name="role" />}>
-        <Select name="role" defaultValue={user?.role ?? "team"}>
+        <Select name="role" defaultValue={user?.role ?? "staff"}>
           {USER_ROLES.map((role) => (
             <option key={role} value={role}>
               {USER_ROLE_LABEL[role]}
@@ -104,6 +110,16 @@ function UserFields({
           ))}
         </Select>
       </Field>
+
+      {/* What each role means, so the choice does not need a manual. */}
+      <dl className="sm:col-span-2 flex flex-col gap-2 rounded-2xl bg-sand/60 p-5">
+        {USER_ROLES.map((role) => (
+          <div key={role} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <dt className="min-w-[5.5rem] font-semibold">{USER_ROLE_LABEL[role]}</dt>
+            <dd className="flex-1 text-sm text-muted">{USER_ROLE_DESCRIPTION[role]}</dd>
+          </div>
+        ))}
+      </dl>
       <Field
         label={isNew ? "Password" : "New password"}
         hint={isNew ? "At least 10 characters." : "Leave blank to keep the current one."}

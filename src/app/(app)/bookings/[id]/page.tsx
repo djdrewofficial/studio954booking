@@ -8,15 +8,7 @@ import { SetupRecipe } from "@/components/setup-recipe";
 import { StatusAction } from "@/components/status-action";
 import { StatusChip } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import {
-  BOOKING_KIND_LABEL,
-  BOOKING_STATUS_LABEL,
-  BOOKING_TYPE_LABEL,
-  STATUS_TONE,
-  type BookingKind,
-  type BookingStatus,
-  type BookingType,
-} from "@/lib/domain";
+import { BOOKING_KIND_LABEL, BOOKING_STATUS_LABEL, BOOKING_TYPE_LABEL, STATUS_TONE, canDeleteBookings, type BookingKind, type BookingStatus, type BookingType } from "@/lib/domain";
 import { formatDate, formatDayLong, formatDuration, formatTime, formatTimeRange } from "@/lib/time";
 import { getBookingDetail, getNotificationLog } from "@/server/bookings";
 import { isEmailConfigured } from "@/server/email/mailer";
@@ -38,7 +30,7 @@ export default async function BookingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireUser();
+  const user = await requireUser();
 
   const [detail, settings] = await Promise.all([getBookingDetail(id), getStudioSettings()]);
   if (!detail) notFound();
@@ -235,6 +227,7 @@ export default async function BookingDetailPage({
             isCancelled={status === "cancelled"}
             isRecurring={Boolean(detail.recurrenceGroupId)}
             emailConfigured={isEmailConfigured()}
+            canDelete={canDeleteBookings(user.role)}
           />
         </div>
 

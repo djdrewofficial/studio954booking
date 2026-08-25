@@ -18,8 +18,8 @@ import {
   studioSettings,
   users,
 } from "@/db/schema";
-import { hashPassword, requireAdmin } from "@/lib/auth";
-import { BOOKING_TYPES } from "@/lib/domain";
+import { hashPassword, requireAdmin, requireCapability } from "@/lib/auth";
+import { BOOKING_TYPES, canManageClients } from "@/lib/domain";
 import {
   addonSchema,
   bookingTypeRateSchema,
@@ -439,7 +439,7 @@ export async function saveClient(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
 
   const id = text(formData, "id");
   const parsed = clientSchema.safeParse({
@@ -482,7 +482,7 @@ export async function saveMembershipPlan(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
 
   const id = text(formData, "id");
   const parsed = membershipPlanSchema.safeParse({
@@ -522,7 +522,7 @@ export async function savePlanEntitlement(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
 
   const id = text(formData, "id");
   const kind = text(formData, "entitlementKind");
@@ -562,7 +562,7 @@ export async function savePlanEntitlement(
 
 /** Used directly as a form action, so removing a line needs no client component. */
 export async function removePlanEntitlement(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
   const id = text(formData, "id");
   if (!id) return;
   await db.delete(membershipPlanEntitlements).where(eq(membershipPlanEntitlements.id, id));
@@ -577,7 +577,7 @@ export async function saveClientMembership(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
 
   const id = text(formData, "id");
   const parsed = clientMembershipSchema.safeParse({
@@ -636,7 +636,7 @@ export async function saveRates(
   _prev: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  await requireAdmin();
+  await requireCapability(canManageClients);
 
   const rows = [];
   for (const type of BOOKING_TYPES) {

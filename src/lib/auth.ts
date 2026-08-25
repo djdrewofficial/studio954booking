@@ -105,10 +105,25 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
-/** Guards admin-only surfaces (settings, sets, add-ons, people). */
+/** Guards admin-only surfaces (studio settings, sets, add-ons, people). */
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await requireUser();
   if (user.role !== "admin") redirect("/today");
+  return user;
+}
+
+/**
+ * Guards an action behind one of the rules in `lib/domain`.
+ *
+ * Server actions are reachable by anyone signed in, whatever the interface
+ * chooses to render, so every write goes through a check here rather than
+ * relying on a hidden button.
+ */
+export async function requireCapability(
+  allowed: (role: UserRole) => boolean,
+): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!allowed(user.role)) redirect("/today");
   return user;
 }
 

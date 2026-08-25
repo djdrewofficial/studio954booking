@@ -22,8 +22,8 @@ export const users = pgTable(
     email: text("email").notNull(),
     name: text("name").notNull(),
     passwordHash: text("password_hash").notNull(),
-    /** "admin" | "team" */
-    role: text("role").notNull().default("team"),
+    /** "admin" | "manager" | "staff" */
+    role: text("role").notNull().default("staff"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -24,11 +24,17 @@ export function BookingActions({
   isCancelled,
   isRecurring,
   emailConfigured,
+  canDelete,
 }: {
   bookingId: string;
   isCancelled: boolean;
   isRecurring: boolean;
   emailConfigured: boolean;
+  /**
+   * Staff run sessions but do not remove them. The server enforces this too —
+   * hiding a button is a courtesy, never the guard.
+   */
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const { toast, error } = useToast();
@@ -88,14 +94,16 @@ export function BookingActions({
             Send confirmation
           </Button>
         ) : null}
-        {!isCancelled ? (
+        {canDelete && !isCancelled ? (
           <Button variant="ghost" disabled={pending} onClick={() => setConfirmCancel(true)}>
             Cancel booking
           </Button>
         ) : null}
-        <Button variant="danger" disabled={pending} onClick={() => setConfirmDelete(true)}>
-          Delete
-        </Button>
+        {canDelete ? (
+          <Button variant="danger" disabled={pending} onClick={() => setConfirmDelete(true)}>
+            Delete
+          </Button>
+        ) : null}
       </div>
 
       <Modal

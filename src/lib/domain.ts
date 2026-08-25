@@ -179,15 +179,66 @@ export const RECURRENCE_LABEL: Record<RecurrenceFrequency, string> = {
  * People
  * ------------------------------------------------------------------------ */
 
-export const USER_ROLES = ["admin", "team"] as const;
+export const USER_ROLES = ["admin", "manager", "staff"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export const USER_ROLE_LABEL: Record<UserRole, string> = {
   admin: "Admin",
-  team: "Team",
+  manager: "Manager",
+  staff: "Staff",
+};
+
+/** Shown beside the role picker, so the choice is obvious without a manual. */
+export const USER_ROLE_DESCRIPTION: Record<UserRole, string> = {
+  admin: "Everything, including studio settings and who is on the team.",
+  manager: "Bookings, clients, memberships and rates. Cannot change studio settings.",
+  staff: "The schedule, running sessions and prep sheets.",
 };
 
 /** Admins manage settings, sets, add-ons and people. Team runs the room. */
+/* ---------------------------------------------------------------------------
+ * What each role may do
+ *
+ * Every permission question in the app resolves here, so the rules can be read
+ * in one place rather than inferred from scattered role comparisons. Viewing is
+ * deliberately open: the studio is a small team and hiding the schedule or the
+ * client list from the people running the room causes more trouble than it
+ * prevents. These gate *changes*.
+ * ------------------------------------------------------------------------ */
+
+/** Studio configuration: sets, options, add-ons, notifications, calendar. */
 export function canManageSettings(role: UserRole): boolean {
   return role === "admin";
+}
+
+/** Adding people and changing what they are allowed to do. */
+export function canManageTeam(role: UserRole): boolean {
+  return role === "admin";
+}
+
+/** Clients, memberships and the rate card — the commercial side. */
+export function canManageClients(role: UserRole): boolean {
+  return role === "admin" || role === "manager";
+}
+
+/**
+ * Creating and editing bookings.
+ *
+ * Every role, deliberately: staff answer the phone and take bookings too, and
+ * an edit is recoverable. Deleting is the one that is not — see below. Named
+ * rather than inlined so there is a single place to narrow it later.
+ */
+export function canManageBookings(role: UserRole): boolean {
+  return USER_ROLES.includes(role);
+}
+
+/**
+ * Removing a booking, or cancelling one outright.
+ *
+ * Separated from editing because it is the one booking action that cannot be
+ * undone from the interface — a deleted booking takes its attendees, options
+ * and files with it.
+ */
+export function canDeleteBookings(role: UserRole): boolean {
+  return role === "admin" || role === "manager";
 }

@@ -4,6 +4,14 @@
  */
 import { periodFor, allowanceFor, coversDraw, describeRemaining, type Entitlement } from "../src/lib/membership";
 import { quoteFor, parseMoneyToCents, formatMoney } from "../src/lib/pricing";
+import {
+  canManageSettings,
+  canManageTeam,
+  canManageClients,
+  canManageBookings,
+  canDeleteBookings,
+  USER_ROLES,
+} from "../src/lib/domain";
 
 const TZ = "America/New_York";
 let pass = 0, fail = 0;
@@ -105,6 +113,14 @@ eq("appointments exhausted", describeRemaining(allowanceFor(plan, pod(3))[0]), "
 eq("appointment overage", describeRemaining(allowanceFor(plan, pod(6))[1]), "1 over 2");
 eq("studio time remaining", describeRemaining(allowanceFor(plan, pod(3))[2]), "7 hr of 10 hr left");
 eq("studio time overage", describeRemaining(allowanceFor(plan, [{bookingType:"podcast", minutes:660}])[2]), "1 hr over 10 hr");
+
+console.log("\n— who may do what —");
+const grid = (fn: (r: typeof USER_ROLES[number]) => boolean) => USER_ROLES.map((r) => `${r}:${fn(r) ? "y" : "n"}`).join(" ");
+eq("studio settings are admin only", grid(canManageSettings), "admin:y manager:n staff:n");
+eq("the team is admin only", grid(canManageTeam), "admin:y manager:n staff:n");
+eq("clients, memberships and rates reach manager", grid(canManageClients), "admin:y manager:y staff:n");
+eq("everyone can take a booking", grid(canManageBookings), "admin:y manager:y staff:y");
+eq("staff cannot delete or cancel", grid(canDeleteBookings), "admin:y manager:y staff:n");
 
 console.log("\n— money parsing —");
 eq("plain", parseMoneyToCents("1250"), 125000);

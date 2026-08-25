@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireUser } from "@/lib/auth";
+import { requireCapability, requireUser } from "@/lib/auth";
 import type { BookingKind, BookingStatus, BookingType } from "@/lib/domain";
+import { canDeleteBookings } from "@/lib/domain";
 import { BOOKING_STATUSES } from "@/lib/domain";
 import { bookingSchema, fieldErrors } from "@/lib/validation";
 import {
@@ -120,7 +121,11 @@ export async function setStatusAction(
   bookingId: string,
   status: BookingStatus,
 ): Promise<ActionResult> {
-  await requireUser();
+  // Every status is part of running the room except cancelling, which takes a
+  // booking off the schedule and cannot be undone from here.
+  if (status === "cancelled") await requireCapability(canDeleteBookings);
+  else await requireUser();
+
   if (!BOOKING_STATUSES.includes(status)) {
     return { ok: false, message: "That is not a valid status." };
   }
@@ -143,7 +148,7 @@ export async function deleteBookingAction(
   id: string,
   scope: "one" | "series" = "one",
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireCapability(canDeleteBookings);
 
   const detail = await getBookingDetail(id);
   if (!detail) return { ok: false, message: "That booking no longer exists." };
