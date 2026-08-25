@@ -16,10 +16,11 @@ export default async function EditBookingPage({
   const { id } = await params;
   await requireUser();
 
-  const [catalogue, values] = await Promise.all([
-    loadBookingCatalogue(),
-    bookingToFormValues(id),
-  ]);
+  // Loaded one after the other rather than together. Each of these fans out
+  // into several queries of its own, and running both at once was enough to
+  // exhaust the connection pool and stall the page.
+  const catalogue = await loadBookingCatalogue();
+  const values = await bookingToFormValues(id);
 
   if (!values) notFound();
 

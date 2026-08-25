@@ -27,7 +27,11 @@ function connect() {
     );
   }
   return postgres(url, {
-    max: process.env.NODE_ENV === "production" ? 10 : 6,
+    // Must stay comfortably above the widest fan-out of any single page: a
+    // request that needs more connections than the pool holds does not queue
+    // politely, it stalls until the statement timeout fires and then poisons
+    // every request behind it.
+    max: process.env.NODE_ENV === "production" ? 12 : 12,
     prepare: false, // required when using Supabase's transaction pooler
     // The pooler drops connections it considers idle. Recycling ours first
     // avoids handing a dead socket to a request, which presents as a hang
